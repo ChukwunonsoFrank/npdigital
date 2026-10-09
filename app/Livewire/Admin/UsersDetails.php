@@ -1,0 +1,431 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Models\Alert;
+use App\Models\MembershipLevel;
+use App\Models\User;
+use App\Models\Withdrawal;
+// use App\Notifications\BroadcastSent;
+// use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+#[Layout('components.layouts.admin')]
+class UsersDetails extends Component
+{
+    use WithPagination;
+
+    protected $queryString = ['id'];
+
+    #[Url]
+    public $id;
+
+    public $balance;
+
+    public $email;
+
+    public $membershipLevel;
+
+    public $tasksCompleted;
+
+    public $dailyCommission;
+
+    public $totalCommission;
+
+    public $processingAmount;
+
+    public $trainingBalance;
+
+    public $taskPole;
+
+    public $newTaskPole;
+
+    public $taskPoleAmount;
+
+    public $bonusAmount;
+
+    public $trainingBalanceAmount;
+
+    public $title;
+
+    public $message;
+
+    public $selectedMembershipLevel;
+
+    public $newCreditScore;
+
+    public $newDailyCommission;
+
+    public $newTotalCommission;
+
+    public $newProcessingAmount;
+
+    public function mount(): void
+    {
+        $user = User::where('id', $this->id)->first();
+
+        if ($user) {
+            $this->newDailyCommission = number_format($user->daily_commission / 100, 2, '.', '');
+            $this->newTotalCommission = number_format($user->total_commission / 100, 2, '.', '');
+            $this->newProcessingAmount = number_format($user->processing_amount / 100, 2, '.', '');
+        }
+    }
+
+    public function getStatusIndicatorColor(string $status)
+    {
+        if (
+            $status === 'approved'
+        ) {
+            return 'bg-success-50 text-success-600';
+        }
+
+        if ($status === 'pending') {
+            return 'bg-warning-50 text-warning-600';
+        }
+
+        if (
+            $status === 'declined'
+        ) {
+            return 'bg-error-50 text-error-600';
+        }
+
+        if ($status === 'unredeemed') {
+            return 'bg-error-50 text-error-600';
+        }
+
+        if ($status === 'redeemed') {
+            return 'bg-success-50 text-success-600';
+        }
+    }
+
+    public function addBonus()
+    {
+        try {
+            // Validate bonus amount
+            if (! isset($this->bonusAmount) || $this->bonusAmount <= 0) {
+                throw new \Exception('Invalid amount');
+            }
+
+            DB::transaction(function () {
+                // Lock the user record
+                $user = User::where('id', '=', $this->id, 'and')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $bonusAmountInCents = (int) round(((float) $this->bonusAmount) * 100);
+                $startingBalance = (int) $user->balance;
+
+                // Update balance atomically
+                $user->balance += $bonusAmountInCents;
+
+                if (
+                    ! $user->has_made_first_deposit
+                    && $startingBalance === 1000
+                    && $bonusAmountInCents >= 10000
+                ) {
+                    $user->has_made_first_deposit = true;
+                }
+
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'User credited successfully', type: 'success');
+
+            // Reset form
+            $this->reset(['bonusAmount']);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function addTrainingBalance()
+    {
+        try {
+            if (! isset($this->trainingBalanceAmount) || $this->trainingBalanceAmount <= 0) {
+                throw new \Exception('Invalid amount');
+            }
+
+            DB::transaction(function () {
+                $user = User::where('id', '=', $this->id, 'and')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $trainingBalanceAmountInCents = (int) round(((float) $this->trainingBalanceAmount) * 100);
+                $user->training_balance += $trainingBalanceAmountInCents;
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'Training balance loaded successfully', type: 'success');
+            $this->reset(['trainingBalanceAmount']);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function removeBonus()
+    {
+        try {
+            // Validate bonus amount
+            if (! isset($this->bonusAmount) || $this->bonusAmount <= 0) {
+                throw new \Exception('Invalid amount');
+            }
+
+            DB::transaction(function () {
+                // Lock the user record
+                $user = User::where('id', '=', $this->id, 'and')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                if ($this->bonusAmount > $user->balance) {
+                    throw new \Exception(
+                        'Insufficient balance for debit',
+                    );
+                }
+
+                $bonusAmountInCents = $this->bonusAmount * 100;
+
+                // Update balance atomically
+                $user->balance -= $bonusAmountInCents;
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'User debited successfully', type: 'success');
+
+            // Reset form
+            $this->reset(['bonusAmount']);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function sendNotification()
+    {
+        try {
+            Alert::create([
+                'user_id' => $this->id,
+                'title' => $this->title,
+                'body' => $this->message,
+                'read_status' => 'unread',
+            ]);
+            $this->dispatch('notify', message: 'Notification sent successfully', type: 'success');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function requestDeposit()
+    {
+        $user = User::where('id', $this->id)->first();
+
+        if (
+            $user
+            && $user->task_batch === 0
+            && ! $user->has_made_first_deposit
+        ) {
+            $this->dispatch(
+                'notify',
+                message: 'User must complete the first task batch and make the first deposit before requesting a deposit.',
+                type: 'error',
+            );
+
+            return;
+        }
+
+        $this->validate([
+            'newTaskPole' => ['required'],
+            'taskPoleAmount' => ['required', 'numeric', 'min:0.01'],
+        ], [
+            'newTaskPole.required' => 'The task pole field is required.',
+            'taskPoleAmount.required' => 'The amount field is required.',
+            'taskPoleAmount.numeric' => 'The amount must be a number.',
+            'taskPoleAmount.min' => 'The amount must be at least 0.01.',
+        ]);
+
+        try {
+            $lienAmount = $this->balance + ($this->taskPoleAmount * 100);
+            $lienAmount = strval($lienAmount);
+            DB::transaction(function () use ($lienAmount) {
+                // Lock the user record
+                $user = User::where('id', '=', $this->id, 'and')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $user->task_pole = $this->newTaskPole;
+                $user->lien_amount = $lienAmount;
+                $user->lien_status = 'on_hold';
+                $user->save();
+            });
+            $this->dispatch('notify', message: 'Task pole set successfully', type: 'success');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function upgradeMembership(): void
+    {
+        $this->validate([
+            'selectedMembershipLevel' => ['required', 'exists:membership_levels,name'],
+        ], [
+            'selectedMembershipLevel.required' => 'Please select a membership level.',
+            'selectedMembershipLevel.exists' => 'The selected membership level is invalid.',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $user = User::where('id', '=', $this->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $user->membership_level = $this->selectedMembershipLevel;
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'Membership level updated successfully', type: 'success');
+            $this->reset(['selectedMembershipLevel']);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function updateCreditScore(): void
+    {
+        $this->validate([
+            'newCreditScore' => ['required', 'numeric', 'min:0'],
+        ], [
+            'newCreditScore.required' => 'The credit score field is required.',
+            'newCreditScore.numeric' => 'The credit score must be a number.',
+            'newCreditScore.min' => 'The credit score must be at least 0.',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $user = User::where('id', '=', $this->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $user->credit_score = $this->newCreditScore;
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'Credit score updated successfully', type: 'success');
+            $this->reset(['newCreditScore']);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function updateBalances(): void
+    {
+        $this->validate([
+            'newDailyCommission' => ['required', 'numeric', 'min:0'],
+            'newTotalCommission' => ['required', 'numeric', 'min:0'],
+            'newProcessingAmount' => ['required', 'numeric', 'min:0'],
+        ], [
+            'newDailyCommission.required' => 'The daily commission field is required.',
+            'newDailyCommission.numeric' => 'The daily commission must be a number.',
+            'newDailyCommission.min' => 'The daily commission must be at least 0.',
+            'newTotalCommission.required' => 'The total commission field is required.',
+            'newTotalCommission.numeric' => 'The total commission must be a number.',
+            'newTotalCommission.min' => 'The total commission must be at least 0.',
+            'newProcessingAmount.required' => 'The processing amount field is required.',
+            'newProcessingAmount.numeric' => 'The processing amount must be a number.',
+            'newProcessingAmount.min' => 'The processing amount must be at least 0.',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $user = User::where('id', '=', $this->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new \Exception('User not found');
+                }
+
+                $user->daily_commission = (int) round(((float) $this->newDailyCommission) * 100);
+                $user->total_commission = (int) round(((float) $this->newTotalCommission) * 100);
+                $user->processing_amount = (int) round(((float) $this->newProcessingAmount) * 100);
+                $user->save();
+            });
+
+            $this->dispatch('notify', message: 'Balances updated successfully', type: 'success');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+        }
+    }
+
+    public function releaseLien(): void
+    {
+        DB::transaction(function () {
+            $user = User::where('id', '=', $this->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $user) {
+                throw new \Exception('User not found');
+            }
+
+            $user->lien_status = 'off_hold';
+            $user->lien_amount = null;
+            $user->task_pole = 35;
+            $user->save();
+        });
+
+        $this->dispatch('notify', message: 'Hold released successfully', type: 'success');
+    }
+
+    public function render()
+    {
+        $user = User::where('id', $this->id)->first();
+        $this->balance = $user->balance;
+        $this->email = $user->email;
+        $this->membershipLevel = $user->membership_level;
+        $this->tasksCompleted = $user->tasks_completed;
+        $this->totalCommission = $user->total_commission;
+        $this->dailyCommission = $user->daily_commission;
+        $this->processingAmount = $user->processing_amount;
+        $this->trainingBalance = $user->training_balance;
+        $this->taskPole = $user->task_pole;
+
+        $withdrawals = Withdrawal::with('user')
+            ->where('user_id', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'withrawals_page');
+
+        $membershipLevels = MembershipLevel::all();
+
+        return view('livewire.admin.users-details', [
+            'user' => $user,
+            'withdrawals' => $withdrawals,
+            'membershipLevels' => $membershipLevels,
+        ]);
+    }
+}

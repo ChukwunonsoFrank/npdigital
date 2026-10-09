@@ -1,0 +1,85 @@
+
+   INFO  Server running on [http://127.0.0.1:8899].  
+
+  Press Ctrl+C to stop the server
+
+  2026-10-08 20:47:12 /login ..................................... ~ 505.84ms
+  2026-10-08 20:47:16 /login ....................................... ~ 0.09ms
+  2026-10-08 20:47:16 /assets/css/style.css ........................ ~ 0.07ms
+  2026-10-08 20:47:16 /build/assets/app-C95DOKf5.css ............... ~ 0.40ms
+  2026-10-08 20:47:16 /unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css  ~ 0.03ms
+  2026-10-08 20:47:16 /assets/css/src/splide/splide.min.css ........ ~ 0.09ms
+  2026-10-08 20:47:16 /assets/css/src/bootstrap/bootstrap.min.css .. ~ 0.18ms
+  2026-10-08 20:47:18 /assets/img/logo.png ......................... ~ 0.32ms
+  2026-10-08 20:47:18 /assets/js/lib/bootstrap.bundle.min.js ....... ~ 0.06ms
+  2026-10-08 20:47:18 /assets/js/plugins/splide/splide.min.js ...... ~ 0.02ms
+  2026-10-08 20:47:18 /assets/js/base.js ........................... ~ 0.02ms
+  2026-10-08 20:47:18 /livewire/livewire.js ........................ ~ 0.02ms
+  2026-10-08 20:47:18 /__service-worker.js ......................... ~ 0.02ms
+  2026-10-08 20:47:19 /_boost/browser-logs ......................... ~ 0.19ms
+  2026-10-08 20:47:19 /favicon.ico ................................. ~ 0.06ms
+  2026-10-08 20:47:20 /livewire/update ............................. ~ 0.07ms
+  2026-10-08 20:47:57 /login ....................................... ~ 0.18ms
+  2026-10-08 20:47:57 /assets/css/style.css ........................ ~ 0.05ms
+  2026-10-08 20:47:57 /build/assets/app-C95DOKf5.css ............... ~ 0.05ms
+  2026-10-08 20:47:57 /unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css  ~ 0.05ms
+  2026-10-08 20:47:57 /assets/css/src/splide/splide.min.css ........ ~ 0.16ms
+  2026-10-08 20:47:57 /assets/css/src/bootstrap/bootstrap.min.css .. ~ 0.37ms
+  2026-10-08 20:47:58 /assets/img/logo.png ......................... ~ 0.31ms
+  2026-10-08 20:47:59 /assets/js/lib/bootstrap.bundle.min.js ....... ~ 0.09ms
+  2026-10-08 20:47:59 /assets/js/plugins/splide/splide.min.js ...... ~ 0.04ms
+  2026-10-08 20:47:59 /assets/js/base.js ........................... ~ 0.03ms
+  2026-10-08 20:47:59 /livewire/livewire.js ........................ ~ 0.03ms
+  2026-10-08 20:47:59 /__service-worker.js ......................... ~ 0.03ms
+  2026-10-08 20:48:00 /favicon.ico ................................. ~ 0.15ms
+  2026-10-08 20:48:00 /_boost/browser-logs ......................... ~ 0.04ms
+  2026-10-08 20:48:01 /livewire/update ............................. ~ 0.07ms
+  2026-10-08 20:48:31 /login ....................................... ~ 0.07ms
+  2026-10-08 20:48:31 /assets/css/style.css ........................ ~ 0.03ms
+  2026-10-08 20:48:31 /build/assets/app-C95DOKf5.css ............... ~ 0.21ms
+  2026-10-08 20:48:31 /unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css  ~ 0.03ms
+  2026-10-08 20:48:31 /assets/css/src/bootstrap/bootstrap.min.css .. ~ 0.09ms
+  2026-10-08 20:48:31 /assets/css/src/splide/splide.min.css ........ ~ 0.14ms
+  2026-10-08 20:48:33 /assets/img/logo.png ......................... ~ 0.61ms
+  2026-10-08 20:48:33 /assets/js/lib/bootstrap.bundle.min.js ....... ~ 0.09ms
+  2026-10-08 20:48:33 /assets/js/plugins/splide/splide.min.js ...... ~ 0.03ms
+  2026-10-08 20:48:33 /assets/js/base.js ........................... ~ 0.03ms
+  2026-10-08 20:48:33 /livewire/livewire.js ........................ ~ 0.03ms
+  2026-10-08 20:48:33 /__service-worker.js ......................... ~ 0.02ms
+  2026-10-08 20:48:34 /favicon.ico ................................. ~ 0.10ms
+  2026-10-08 20:48:34 /_boost/browser-logs ......................... ~ 0.03ms
+  2026-10-08 20:48:35 /livewire/update ........................... ~ 505.32ms
+  2026-10-08 20:49:33 /dashboard/wallet ............................ ~ 0.05ms
+  2026-10-08 20:49:33 /login ....................................... ~ 0.02ms
+  2026-10-08 20:49:33 /assets/css/style.css ........................ ~ 0.02ms
+  2026-10-08 20:49:33 /build/assets/app-C95DOKf5.css ............... ~ 0.14ms
+  2026-10-08 20:49:33 /unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css  ~ 0.02ms
+  2026-10-08 20:49:33 /assets/css/src/bootstrap/bootstrap.min.css .. ~ 0.17ms
+  2026-10-08 20:49:33 /assets/css/src/splide/splide.min.css ........ ~ 0.21ms
+  2026-10-08 20:49:35 /assets/img/logo.png ......................... ~ 0.23ms
+  2026-10-08 20:49:36 /assets/js/lib/bootstrap.bundle.min.js ....... ~ 0.29ms
+  2026-10-08 20:49:36 /assets/js/plugins/splide/splide.min.js ...... ~ 0.07ms
+  2026-10-08 20:49:36 /assets/js/base.js ........................... ~ 0.06ms
+  2026-10-08 20:49:36 /livewire/livewire.js ........................ ~ 0.05ms
+  2026-10-08 20:49:36 /__service-worker.js ......................... ~ 0.05ms
+  2026-10-08 20:49:36 /favicon.ico ................................. ~ 0.28ms
+  2026-10-08 20:49:36 /_boost/browser-logs ......................... ~ 0.06ms
+  2026-10-08 20:49:58 /dashboard/wallet ............................ ~ 0.33ms
+  2026-10-08 20:49:58 /dashboard/wallet ............................ ~ 0.13ms
+  2026-10-08 20:50:14 /dashboard/wallet ............................ ~ 0.08ms
+  2026-10-08 20:50:14 /login ....................................... ~ 0.02ms
+  2026-10-08 20:50:14 /assets/css/style.css ........................ ~ 0.03ms
+  2026-10-08 20:50:14 /build/assets/app-C95DOKf5.css ............... ~ 0.20ms
+  2026-10-08 20:50:14 /unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css  ~ 0.02ms
+  2026-10-08 20:50:14 /assets/css/src/bootstrap/bootstrap.min.css .. ~ 0.09ms
+  2026-10-08 20:50:14 /assets/css/src/splide/splide.min.css ........ ~ 0.14ms
+  2026-10-08 20:50:16 /assets/img/logo.png ......................... ~ 0.20ms
+  2026-10-08 20:50:16 /assets/js/lib/bootstrap.bundle.min.js ....... ~ 0.08ms
+  2026-10-08 20:50:16 /assets/js/plugins/splide/splide.min.js ...... ~ 0.02ms
+  2026-10-08 20:50:16 /assets/js/base.js ........................... ~ 0.02ms
+  2026-10-08 20:50:16 /livewire/livewire.js ........................ ~ 0.01ms
+  2026-10-08 20:50:16 /__service-worker.js ......................... ~ 0.01ms
+  2026-10-08 20:50:17 /_boost/browser-logs ......................... ~ 0.07ms
+  2026-10-08 20:50:17 /favicon.ico ................................. ~ 0.02ms
+  2026-10-08 20:50:29 /dashboard/wallet ............................ ~ 0.28ms
+  2026-10-08 20:50:41 /login ....................................... ~ 0.08ms

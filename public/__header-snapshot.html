@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+    body { margin: 0; }
+    .headerButton #google_translate_element .goog-te-gadget { font-size: 0; }
+    .headerButton #google_translate_element .goog-te-combo {
+        margin: 0 !important; padding: 2px 6px; font-size: 12px; border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1); color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .headerButton #google_translate_element .goog-te-gadget-simple img,
+    .headerButton #google_translate_element .goog-te-gadget-simple a { display: none; }
+</style>
+</head>
+<body>
+<div class="appHeader bg-primary text-light">
+    <div class="left">
+        <a href="#" class="headerButton"><ion-icon name="menu-outline"></ion-icon></a>
+    </div>
+    <div class="pageTitle">
+        <img src="/assets/img/logo.png" alt="logo" class="logo">
+    </div>
+    <div class="right">
+        <div class="headerButton">
+            <div id="google_translate_element"><div class="skiptranslate goog-te-gadget" dir="ltr"><div id=":0.targetLanguage"><select class="goog-te-combo" aria-label="Language Translate Widget"><option value="">Select Language</option><option value="en">English</option><option value="fr">French</option><option value="es">Spanish</option></select></div></div></div>
+        </div>
+        <a href="#" class="headerButton"><ion-icon class="icon" name="notifications-outline"></ion-icon></a>
+        <a href="#" class="headerButton"><ion-icon name="chatbox-ellipses-outline"></ion-icon></a>
+    </div>
+</div>
+<script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7/dist/ionicons/ionicons.esm.js"></script>
+</body>
+</html>
