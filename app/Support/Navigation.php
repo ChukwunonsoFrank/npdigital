@@ -28,14 +28,14 @@ class Navigation
             ['label' => 'Overview', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => 'admin.dashboard'],
             ['label' => 'User Management', 'route' => 'admin.dashboard.users', 'icon' => 'users', 'active' => 'admin.dashboard.users*'],
             ['label' => 'Product Tasks', 'route' => 'admin.dashboard.tasks', 'icon' => 'film', 'active' => 'admin.dashboard.tasks*'],
-            ['label' => 'Product Warehouse', 'route' => null, 'icon' => 'warehouse', 'active' => 'admin.dashboard.warehouse*'],
-            ['label' => 'Training', 'route' => null, 'icon' => 'graduation-cap', 'active' => 'admin.dashboard.training*'],
-            ['label' => 'Payments', 'route' => 'admin.dashboard.deposits', 'icon' => 'credit-card', 'active' => 'admin.dashboard.deposits*'],
-            ['label' => 'Upgrades', 'route' => 'admin.dashboard.membershiplevels', 'icon' => 'circle-arrow-up', 'active' => 'admin.dashboard.membershiplevels*'],
-            ['label' => 'Manage Admins', 'route' => null, 'icon' => 'shield-check', 'active' => 'admin.dashboard.admins*'],
-            ['label' => 'Platform Settings', 'route' => null, 'icon' => 'settings', 'active' => 'admin.dashboard.settings*'],
-            ['label' => 'Live Chat', 'route' => null, 'icon' => 'message-circle', 'active' => 'admin.dashboard.chat*'],
-            ['label' => 'Announcements', 'route' => 'admin.dashboard.broadcast', 'icon' => 'megaphone', 'active' => 'admin.dashboard.broadcast*'],
+            ['label' => 'Product Warehouse', 'route' => 'admin.dashboard.warehouse', 'icon' => 'warehouse', 'active' => 'admin.dashboard.warehouse*'],
+            ['label' => 'Training', 'route' => 'admin.training', 'icon' => 'graduation-cap', 'active' => 'admin.training'],
+            ['label' => 'Payments', 'route' => 'admin.payments', 'icon' => 'credit-card', 'active' => 'admin.payments'],
+            ['label' => 'Upgrades', 'route' => 'admin.upgrades', 'icon' => 'circle-arrow-up', 'active' => 'admin.upgrades'],
+            ['label' => 'Manage Admins', 'route' => 'admin.admins', 'icon' => 'shield-check', 'active' => 'admin.admins'],
+            ['label' => 'Platform Settings', 'route' => 'admin.settings', 'icon' => 'settings', 'active' => 'admin.settings*'],
+            // ['label' => 'Live Chat', 'route' => null, 'icon' => 'message-circle', 'active' => 'admin.dashboard.chat*'],
+            ['label' => 'Announcements', 'route' => 'admin.announcements', 'icon' => 'megaphone', 'active' => 'admin.announcements'],
         ];
     }
 }

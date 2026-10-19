@@ -2,134 +2,885 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\CompletedTask;
+use App\Models\MembershipLevel;
 use App\Models\User;
-use App\Models\Withdrawal;
+use App\Support\CompletesTasks;
+use App\Support\ProductWarehouse;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Layout('components.layouts.admin')]
+#[Layout('components.layouts.dashboard')]
 class Users extends Component
 {
+    use CompletesTasks;
     use WithPagination;
 
     #[Url(as: 'search', keep: true)]
     public string $query = '';
 
-    public function getStatusIndicatorColor(string $status): string
+    #[Locked]
+    public bool $taskSummary = false;
+
+    public ?int $selectedUserId = null;
+
+    public ?int $editingUserId = null;
+
+    public string $editName = '';
+
+    public string $editUsername = '';
+
+    public string $editEmail = '';
+
+    public string $editMobileNumber = '';
+
+    public string $editPassword = '';
+
+    public string $editTransactionPassword = '';
+
+    public string $editCreditScore = '';
+
+    public ?int $upgradeTargetUserId = null;
+
+    public string $upgradeTargetLevel = '';
+
+    public bool $showUpgradeMembership = false;
+
+    public string $upgradeMembershipLevel = '';
+
+    public ?int $manageFundsUserId = null;
+
+    public string $fundsAction = 'add_funds';
+
+    public string $fundsAmount = '';
+
+    public bool $showAddExclusive = false;
+
+    public string $exclusiveProductId = '';
+
+    public string $exclusivePrice = '';
+
+    public string $exclusiveCommission = '';
+
+    public bool $showSetProducts = false;
+
+    public function boot(): void
     {
-        return match ($status) {
-            'active', 'off_hold' => 'bg-success-50 text-success-600',
-            'inactive', 'on_hold' => 'bg-error-50 text-error-600',
-            default => 'bg-gray-50 text-gray-600',
+        if ($this->taskSummary) {
+            abort_unless(Auth::user()?->is_admin, 403);
+        }
+    }
+
+    #[On('show-task-user')]
+    public function showTaskUser(int $userId): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        if (! $this->taskSummary) {
+            return;
+        }
+
+        $this->closeUserDetails();
+        $this->closeUpgradeTarget();
+        $this->closeUpgradeMembership();
+        $this->showUserDetails($userId);
+    }
+
+    public function openSetProducts(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        if (! User::query()->where('is_admin', false)->find($this->selectedUserId)) {
+            return;
+        }
+
+        $this->resetValidation();
+        $this->showSetProducts = true;
+    }
+
+    public function closeSetProducts(): void
+    {
+        $this->showSetProducts = false;
+        $this->resetValidation();
+    }
+
+    public function assignWarehouseGroup(int $day, string $group): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+        abort_unless($day >= 1 && $day <= ProductWarehouse::DAY_COUNT && in_array($group, ProductWarehouse::GROUPS, true), 422);
+
+        $user = User::query()->where('is_admin', false)->findOrFail($this->selectedUserId);
+        $level = strtolower($user->membership_level);
+        abort_unless(ProductWarehouse::isValidLevel($level), 422);
+
+        if ($user->remainingWarehouseProducts($day, $group) === []) {
+            $this->addError('warehouseGroup', 'This group is empty or the user has already submitted all its products.');
+
+            return;
+        }
+
+        $user->update([
+            'warehouse_groups' => [
+                ...($user->warehouse_groups ?? []),
+                $level => ['day' => $day, 'group' => $group],
+            ],
+        ]);
+
+        $this->closeUserDetails();
+        $this->dispatch('toast', message: 'Warehouse group assigned. It will apply after any current task.');
+    }
+
+    public function openAddExclusive(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        if (! User::query()->where('is_admin', false)->find($this->selectedUserId)) {
+            return;
+        }
+
+        $this->reset('exclusiveProductId', 'exclusivePrice', 'exclusiveCommission');
+        $this->resetValidation();
+        $this->showAddExclusive = true;
+    }
+
+    public function closeAddExclusive(): void
+    {
+        $this->showAddExclusive = false;
+        $this->resetValidation();
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function exclusiveProducts(): array
+    {
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        return $user ? ProductWarehouse::exclusiveProducts(strtolower($user->membership_level)) : [];
+    }
+
+    public function updatedExclusiveProductId(): void
+    {
+        $product = collect($this->exclusiveProducts())->firstWhere('id', $this->exclusiveProductId);
+        $this->exclusivePrice = $product ? number_format($product['price'] + ($product['price2'] ?? 0), 2, '.', '') : '';
+        $this->exclusiveCommission = $product ? (string) $product['commission'] : '';
+        $this->resetValidation();
+    }
+
+    public function assignExclusive(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        if (! $this->showAddExclusive) {
+            return;
+        }
+
+        $user = User::query()->where('is_admin', false)->findOrFail($this->selectedUserId);
+        $products = $this->exclusiveProducts();
+
+        $this->validate([
+            'exclusiveProductId' => ['required', Rule::in(array_column($products, 'id'))],
+            'exclusivePrice' => ['required', 'numeric', 'min:0.01', 'max:99999999.99', 'decimal:0,2'],
+            'exclusiveCommission' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
+        ], [], [
+            'exclusiveProductId' => 'exclusive product',
+            'exclusivePrice' => 'price',
+            'exclusiveCommission' => 'commission',
+        ]);
+
+        $product = collect($products)->firstWhere('id', $this->exclusiveProductId);
+
+        CompletedTask::create([
+            'user_id' => $user->id,
+            'title' => $product['name'].($product['name2'] ? ' + '.$product['name2'] : ''),
+            'cost' => number_format((float) $this->exclusivePrice, 2, '.', ''),
+            'commission_percentage' => $this->exclusiveCommission,
+            'task_image_path' => $product['image'] ?? '',
+            'rating' => '0',
+            'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
+            'status' => 'queued',
+        ]);
+
+        $this->closeAddExclusive();
+        $this->dispatch('toast', message: 'Exclusive task assigned. It will appear after the current task.');
+        $this->dispatch('task-user-updated');
+    }
+
+    public function updatedQuery(): void
+    {
+        $this->resetPage();
+    }
+
+    public function showUserDetails(int $userId): void
+    {
+        $this->selectedUserId = User::query()
+            ->where('is_admin', false)
+            ->whereKey($userId)
+            ->value('id');
+    }
+
+    public function closeUserDetails(): void
+    {
+        $this->closeAddExclusive();
+        $this->closeSetProducts();
+        $this->selectedUserId = null;
+    }
+
+    public function viewAsUser(): void
+    {
+        $admin = Auth::user();
+
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $admin || ! $admin->is_admin || ! $user) {
+            return;
+        }
+
+        if ($user->is_banned) {
+            $this->dispatch('toast', message: 'Banned accounts cannot be viewed in preview mode.');
+
+            return;
+        }
+
+        if ($user->account_status === 'suspended') {
+            $this->dispatch('toast', message: 'Suspended accounts cannot be viewed in preview mode.');
+
+            return;
+        }
+
+        $adminId = $admin->id;
+
+        Auth::login($user);
+
+        session()->put('view_as_admin_id', $adminId);
+        session()->put('view_as_user_id', $user->id);
+
+        $this->redirect(route('dashboard'));
+    }
+
+    public function suspendUser(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $user->account_status = 'suspended';
+        $user->save();
+
+        $this->dispatch('toast', message: ($user->name ?: $user->username).' suspended');
+    }
+
+    public function unsuspendUser(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $user->account_status = 'active';
+        $user->save();
+
+        $this->dispatch('toast', message: ($user->name ?: $user->username).' unsuspended');
+    }
+
+    public function clearRecord(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        DB::transaction(function () use ($user): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                return;
+            }
+
+            $lockedUser->tasks()->delete();
+
+            $lockedUser->tasks_completed = 0;
+            $lockedUser->lien_amount = null;
+            $lockedUser->lien_status = 'off_hold';
+            $lockedUser->save();
+        });
+
+        $this->dispatch('toast', message: 'Record cleared successfully.');
+        $this->closeUserDetails();
+        $this->dispatch('task-user-updated');
+    }
+
+    public function deleteUser(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $profileImagePath = $user->profile_image_path;
+
+        DB::transaction(function () use ($user): void {
+            $user->tasks()->delete();
+            $user->alerts()->delete();
+            $user->withdrawals()->delete();
+            $user->wallets()->delete();
+            $user->deposits()->delete();
+
+            DB::table('referrals')->where('user_id', $user->id)->delete();
+
+            $user->delete();
+        });
+
+        if ($profileImagePath && Storage::disk('public')->exists($profileImagePath)) {
+            Storage::disk('public')->delete($profileImagePath);
+        }
+
+        $this->dispatch('toast', message: 'User account deleted successfully.');
+        $this->closeUserDetails();
+        $this->dispatch('task-user-updated');
+    }
+
+    public function editUser(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->editingUserId = $user->id;
+        $this->editName = (string) $user->name;
+        $this->editUsername = (string) $user->username;
+        $this->editEmail = (string) $user->email;
+        $this->editMobileNumber = (string) $user->mobile_number;
+        $this->editPassword = (string) ($user->unhashed_password ?? '');
+        $this->editTransactionPassword = (string) ($user->unhashed_withdrawal_password ?? '');
+        $this->editCreditScore = (string) $user->credit_score;
+
+        $this->resetValidation();
+        $this->selectedUserId = null;
+    }
+
+    public function closeEditUser(): void
+    {
+        $this->editingUserId = null;
+        $this->reset(
+            'editName',
+            'editUsername',
+            'editEmail',
+            'editMobileNumber',
+            'editPassword',
+            'editTransactionPassword',
+            'editCreditScore',
+        );
+        $this->resetValidation();
+    }
+
+    public function saveUser(): void
+    {
+        $user = $this->editingUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->editingUserId);
+
+        if (! $user) {
+            $this->closeEditUser();
+
+            return;
+        }
+
+        $rules = [
+            'editName' => ['required', 'string', 'max:255'],
+            'editUsername' => ['required', 'string', 'max:255', 'regex:/^\S+$/', Rule::unique(User::class, 'username')->ignore($user->id)],
+            'editEmail' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')->ignore($user->id)],
+            'editMobileNumber' => ['required', 'string', 'max:255'],
+            'editCreditScore' => ['required', 'numeric', 'min:0', 'max:100'],
+        ];
+
+        if (filled($this->editPassword)) {
+            $rules['editPassword'] = ['string', 'min:6'];
+        }
+
+        if (filled($this->editTransactionPassword)) {
+            $rules['editTransactionPassword'] = ['string', 'min:6'];
+        }
+
+        $validated = $this->validate($rules, [
+            'editUsername.regex' => 'The username must not contain spaces.',
+            'editUsername.unique' => 'This username is already taken.',
+            'editEmail.unique' => 'This email address is already taken.',
+            'editCreditScore.max' => 'The credit score must not be greater than 100.',
+        ]);
+
+        $user->name = $validated['editName'];
+        $user->username = $validated['editUsername'];
+        $user->email = $validated['editEmail'];
+        $user->mobile_number = $validated['editMobileNumber'];
+        $user->credit_score = (int) $validated['editCreditScore'];
+
+        if (filled($this->editPassword)) {
+            $user->password = Hash::make($this->editPassword);
+            $user->unhashed_password = $this->editPassword;
+        }
+
+        if (filled($this->editTransactionPassword)) {
+            $user->withdrawal_password = Hash::make($this->editTransactionPassword);
+            $user->unhashed_withdrawal_password = $this->editTransactionPassword;
+        }
+
+        $user->save();
+
+        $this->dispatch('toast', message: 'User updated successfully.');
+        $this->closeEditUser();
+    }
+
+    public function openUpgradeTarget(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->upgradeTargetUserId = $user->id;
+        $this->upgradeTargetLevel = '';
+
+        $this->resetValidation();
+        $this->selectedUserId = null;
+    }
+
+    public function closeUpgradeTarget(): void
+    {
+        $this->upgradeTargetUserId = null;
+        $this->reset('upgradeTargetLevel');
+        $this->resetValidation();
+    }
+
+    public function setUpgradeTarget(): void
+    {
+        $user = $this->upgradeTargetUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->upgradeTargetUserId);
+
+        if (! $user) {
+            $this->closeUpgradeTarget();
+
+            return;
+        }
+
+        $this->validate([
+            'upgradeTargetLevel' => ['required', Rule::in($this->eligibleUpgradeLevels($user)->pluck('name')->all())],
+        ], [
+            'upgradeTargetLevel.required' => 'Please select a target level.',
+            'upgradeTargetLevel.in' => 'Please select a level above the user’s current membership level.',
+        ]);
+
+        $user->required_upgrade_level = $this->upgradeTargetLevel;
+        $user->save();
+
+        $this->dispatch('toast', message: 'Upgrade target set successfully.');
+        $this->closeUpgradeTarget();
+        $this->dispatch('task-user-updated');
+    }
+
+    /** @return Collection<int, MembershipLevel> */
+    private function eligibleUpgradeLevels(User $user): Collection
+    {
+        $currentLevel = $user->membership_level ?: 'Normal';
+        $currentPercentage = MembershipLevel::query()->where('name', $currentLevel)->value('percentage');
+
+        return MembershipLevel::query()
+            ->where('name', '!=', $currentLevel)
+            ->where('percentage', '>', $currentPercentage ?? 0)
+            ->orderBy('percentage')
+            ->get();
+    }
+
+    public function openUpgradeMembership(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $currentLevel = $user->membership_level ?: 'Normal';
+
+        $levels = MembershipLevel::query()
+            ->orderBy('percentage')
+            ->pluck('name');
+
+        $currentIndex = $levels->search($currentLevel);
+
+        $this->upgradeMembershipLevel = $currentIndex !== false && $levels->has($currentIndex + 1)
+            ? $levels->get($currentIndex + 1)
+            : $currentLevel;
+
+        $this->resetValidation();
+        $this->showUpgradeMembership = true;
+    }
+
+    public function closeUpgradeMembership(): void
+    {
+        $this->showUpgradeMembership = false;
+        $this->reset('upgradeMembershipLevel');
+        $this->resetValidation();
+    }
+
+    public function applyUpgradeMembership(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            $this->closeUpgradeMembership();
+
+            return;
+        }
+
+        $this->validate([
+            'upgradeMembershipLevel' => ['required', 'exists:membership_levels,name'],
+        ], [
+            'upgradeMembershipLevel.required' => 'Please select a membership level.',
+            'upgradeMembershipLevel.exists' => 'The selected membership level is invalid.',
+        ]);
+
+        DB::transaction(function () use ($user): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $lockedUser->membership_level = $this->upgradeMembershipLevel;
+
+            if ($lockedUser->required_upgrade_level !== null && ! $lockedUser->requiresUpgrade()) {
+                $lockedUser->required_upgrade_level = null;
+            }
+
+            $lockedUser->save();
+        });
+
+        $this->dispatch('toast', message: 'Membership level updated successfully.');
+        $this->closeUpgradeMembership();
+        $this->dispatch('task-user-updated');
+    }
+
+    public function openFunds(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->manageFundsUserId = $user->id;
+        $this->fundsAction = 'add_funds';
+        $this->fundsAmount = '';
+
+        $this->resetValidation();
+        $this->selectedUserId = null;
+    }
+
+    public function closeFunds(): void
+    {
+        $this->manageFundsUserId = null;
+        $this->reset('fundsAction', 'fundsAmount');
+        $this->resetValidation();
+    }
+
+    public function applyFunds(): void
+    {
+        $user = $this->manageFundsUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->manageFundsUserId);
+
+        if (! $user) {
+            $this->closeFunds();
+
+            return;
+        }
+
+        if ($this->fundsAction !== 'return_balance') {
+            $this->validate([
+                'fundsAmount' => ['required', 'numeric', 'min:0.01'],
+            ], [
+                'fundsAmount.required' => 'The amount field is required.',
+                'fundsAmount.numeric' => 'The amount must be a number.',
+                'fundsAmount.min' => 'The amount must be at least 0.01.',
+            ]);
+        }
+
+        $amountInCents = (int) round(((float) $this->fundsAmount) * 100);
+
+        try {
+            match ($this->fundsAction) {
+                'add_funds' => $this->addFundsToBalance($user, $amountInCents),
+                'deduct_funds' => $this->deductFundsFromBalance($user, $amountInCents),
+                'return_balance' => $this->returnBalance($user),
+                'add_todays_earnings' => $this->addTodaysEarnings($user, $amountInCents),
+                'deduct_todays_earnings' => $this->deductTodaysEarnings($user, $amountInCents),
+                'add_on_hold' => $this->addOnHoldBalance($user, $amountInCents),
+                'deduct_on_hold' => $this->deductOnHoldBalance($user, $amountInCents),
+                default => throw new \Exception('Unsupported funds action.'),
+            };
+        } catch (\Exception $e) {
+            $this->addError('fundsAmount', $e->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('toast', message: $this->fundsSuccessMessage());
+        $this->closeFunds();
+    }
+
+    private function addFundsToBalance(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $startingBalance = (int) $lockedUser->balance;
+            $lockedUser->balance = $startingBalance + $amountInCents;
+
+            if (
+                ! $lockedUser->has_made_first_deposit
+                && $startingBalance === 1000
+                && $amountInCents >= 10000
+            ) {
+                $lockedUser->has_made_first_deposit = true;
+            }
+
+            $lockedUser->save();
+        });
+    }
+
+    private function deductFundsFromBalance(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            if ($amountInCents > (int) $lockedUser->balance) {
+                throw new \Exception('Insufficient balance for this deduction.');
+            }
+
+            $lockedUser->balance = (int) $lockedUser->balance - $amountInCents;
+            $lockedUser->save();
+        });
+    }
+
+    private function returnBalance(User $user): void
+    {
+        $pendingTask = CompletedTask::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        DB::transaction(function () use ($user): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $lockedUser->lien_status = 'off_hold';
+            $lockedUser->lien_amount = null;
+            $lockedUser->task_pole = 35;
+            $lockedUser->save();
+        });
+
+        if ($pendingTask) {
+            $this->completeTask($user, $pendingTask);
+        }
+    }
+
+    private function addTodaysEarnings(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $lockedUser->daily_commission = (int) $lockedUser->daily_commission + $amountInCents;
+            $lockedUser->save();
+        });
+    }
+
+    private function deductTodaysEarnings(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            if ($amountInCents > (int) $lockedUser->daily_commission) {
+                throw new \Exception("Insufficient today's earnings for this deduction.");
+            }
+
+            $lockedUser->daily_commission = (int) $lockedUser->daily_commission - $amountInCents;
+            $lockedUser->save();
+        });
+    }
+
+    private function addOnHoldBalance(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $currentOnHold = $lockedUser->lien_status === 'on_hold' ? (int) $lockedUser->lien_amount : 0;
+
+            $lockedUser->lien_amount = (string) ($currentOnHold + $amountInCents);
+            $lockedUser->lien_status = 'on_hold';
+            $lockedUser->save();
+        });
+    }
+
+    private function deductOnHoldBalance(User $user, int $amountInCents): void
+    {
+        DB::transaction(function () use ($user, $amountInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $currentOnHold = $lockedUser->lien_status === 'on_hold' ? (int) $lockedUser->lien_amount : 0;
+
+            if ($amountInCents > $currentOnHold) {
+                throw new \Exception('Insufficient on-hold balance for this deduction.');
+            }
+
+            $remainingOnHold = $currentOnHold - $amountInCents;
+
+            if ($remainingOnHold > 0) {
+                $lockedUser->lien_amount = (string) $remainingOnHold;
+            } else {
+                $lockedUser->lien_amount = null;
+                $lockedUser->lien_status = 'off_hold';
+            }
+
+            $lockedUser->save();
+        });
+    }
+
+    private function fundsSuccessMessage(): string
+    {
+        return match ($this->fundsAction) {
+            'add_funds' => 'Funds added successfully.',
+            'deduct_funds' => 'Funds deducted successfully.',
+            'return_balance' => 'Balance returned successfully.',
+            'add_todays_earnings' => "Today's earnings added successfully.",
+            'deduct_todays_earnings' => "Today's earnings deducted successfully.",
+            'add_on_hold' => 'On-hold balance added successfully.',
+            'deduct_on_hold' => 'On-hold balance deducted successfully.',
+            default => 'Funds updated successfully.',
         };
     }
 
-    public function deactivateUser(int $userId)
+    public function render(): View
     {
-        try {
-            User::where('id', '=', $userId, 'and')->update([
-                'account_status' => 'inactive',
-            ]);
+        $users = $this->taskSummary ? null : User::query()
+            ->where('is_admin', false)
+            ->when($this->query !== '', function ($query): void {
+                $search = '%'.$this->query.'%';
 
-            session()->flash('success-message', 'Deactivation successful.');
-        } catch (\Exception $e) {
-            session()->flash('error-message', $e->getMessage());
+                $query->where(function ($query) use ($search): void {
+                    $query->where('name', 'like', $search)
+                        ->orWhere('username', 'like', $search)
+                        ->orWhere('email', 'like', $search)
+                        ->orWhere('mobile_number', 'like', $search);
+                });
+            })
+            ->latest()
+            ->paginate(20);
+
+        $selectedUser = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        $upgradeTargetUser = $this->upgradeTargetUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->upgradeTargetUserId);
+
+        $manageFundsUser = $this->manageFundsUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->manageFundsUserId);
+
+        $membershipLevels = MembershipLevel::query()->orderBy('percentage')->get();
+
+        $warehouseGroups = [];
+
+        if ($this->showSetProducts && $selectedUser && ProductWarehouse::isValidLevel(strtolower($selectedUser->membership_level))) {
+            foreach (ProductWarehouse::groupCounts(strtolower($selectedUser->membership_level)) as $day => $groups) {
+                foreach ($groups as $group => $count) {
+                    $warehouseGroups[] = [
+                        'day' => $day,
+                        'group' => $group,
+                        'count' => $count,
+                        'remaining' => count($selectedUser->remainingWarehouseProducts($day, $group)),
+                    ];
+                }
+            }
         }
-    }
-
-    public function banUser(int $userId)
-    {
-        try {
-            User::where('id', '=', $userId, 'and')->update([
-                'is_banned' => true,
-            ]);
-
-            session()->flash('success-message', 'Ban successful.');
-        } catch (\Exception $e) {
-            session()->flash('error-message', $e->getMessage());
-        }
-    }
-
-    public function unbanUser(int $userId)
-    {
-        try {
-            User::where('id', '=', $userId, 'and')->update([
-                'is_banned' => false,
-            ]);
-
-            session()->flash('success-message', 'Unban successful.');
-        } catch (\Exception $e) {
-            session()->flash('error-message', $e->getMessage());
-        }
-    }
-
-    public function destroyUser(int $userId)
-    {
-        try {
-            DB::transaction(function () use ($userId) {
-                // Delete related withdrawal records
-                Withdrawal::where('user_id', '=', $userId, 'and')->delete();
-
-                // Delete the user account
-                $user = User::findOrFail($userId);
-                $user->delete($userId);
-            });
-
-            session()->flash('success-message', 'User deleted successfully.');
-        } catch (\Exception $e) {
-            session()->flash('error-message', $e->getMessage());
-        }
-    }
-
-    public function activateUser(int $userId)
-    {
-        try {
-            User::where('id', '=', $userId, 'and')->update([
-                'account_status' => 'active',
-            ]);
-            session()->flash('success-message', 'Activation successful.');
-        } catch (\Exception $e) {
-            session()->flash('error-message', $e->getMessage());
-        }
-    }
-
-    public function search()
-    {
-        // Reset to first page when searching
-        $this->resetPage();
-    }
-
-    public function updatedQuery()
-    {
-        // Reset to first page when query changes
-        $this->resetPage();
-    }
-
-    public function render()
-    {
-        $query = User::query()->where('is_admin', 0);
-
-        if (! empty($this->query)) {
-            $query->where('username', 'LIKE', '%'.$this->query.'%');
-        }
-
-        $users = $query->latest()->paginate(20);
 
         return view('livewire.admin.users', [
             'users' => $users,
+            'selectedUser' => $selectedUser,
+            'upgradeTargetUser' => $upgradeTargetUser,
+            'manageFundsUser' => $manageFundsUser,
+            'membershipLevels' => $membershipLevels,
+            'upgradeTargetLevels' => $upgradeTargetUser ? $this->eligibleUpgradeLevels($upgradeTargetUser) : collect(),
+            'warehouseGroups' => $warehouseGroups,
+            'exclusiveProducts' => $this->showAddExclusive ? $this->exclusiveProducts() : [],
+            'exclusiveTaskCount' => $selectedUser ? CompletedTask::query()->where('user_id', $selectedUser->id)->whereNotNull('commission_percentage')->whereIn('status', ['queued', 'pending'])->count() : 0,
         ]);
-    }
-
-    protected function prepareSearchTerm(string $term): string
-    {
-        $sanitized = preg_replace('/[+\-><*~"()@.]/', ' ', $term);
-        $words = array_filter(explode(' ', trim($sanitized)), fn ($word) => strlen($word) > 3);
-
-        $preparedWords = array_map(fn ($word) => '+'.$word.'*', $words);
-
-        return implode(' ', $preparedWords);
     }
 }

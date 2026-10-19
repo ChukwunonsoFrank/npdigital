@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Models\PlatformSetting;
 use App\Models\User;
 use App\Notifications\ReferralLinkApplied;
 use App\Notifications\RegisterBonusEarned;
@@ -25,6 +26,8 @@ class Register extends Component
     #[Url]
     public ?string $ref = null;
 
+    public string $name = '';
+
     public string $username = '';
 
     public string $email = '';
@@ -39,6 +42,8 @@ class Register extends Component
 
     public string $withdrawal_password = '';
 
+    public string $withdrawal_password_confirmation = '';
+
     public string $ref_code = '';
 
     public string $timezone = 'UTC';
@@ -46,6 +51,14 @@ class Register extends Component
     public bool $termsAndPrivacyPolicyAccepted = false;
 
     public ?string $gRecaptchaResponse = null;
+
+    public function boot(): void
+    {
+        $settings = PlatformSetting::current();
+
+        abort_if($settings->maintenance_mode, 503, 'The platform is temporarily unavailable for maintenance. Please try again later.');
+        abort_unless($settings->allow_registrations, 403, 'New registrations are currently disabled.');
+    }
 
     public function mount(): void
     {
@@ -58,7 +71,8 @@ class Register extends Component
     protected function messages(): array
     {
         return [
-            'termsAndPrivacyPolicyAccepted.accepted' => 'Please accept the Register agreement to proceed.',
+            'termsAndPrivacyPolicyAccepted.accepted' => 'Please agree to the Terms and Conditions to proceed.',
+            'withdrawal_password.confirmed' => 'The transaction passwords do not match.',
         ];
     }
 
@@ -73,17 +87,18 @@ class Register extends Component
             }
 
             $validated = $this->validate([
+                'name' => ['required', 'string', 'max:255'],
                 'username' => ['required', 'string', 'max:255', 'unique:'.User::class],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
                 'country_code' => ['required', 'string', 'regex:/^\+\d{1,4}$/'],
-                'mobile_number' => ['required', 'string', 'max:255'],
+                'mobile_number' => ['nullable', 'string', 'max:255'],
                 'password' => [
                     'required',
                     'string',
                     'confirmed',
                     Rules\Password::defaults(),
                 ],
-                'withdrawal_password' => ['required', 'string', 'min:4'],
+                'withdrawal_password' => ['required', 'string', 'min:4', 'confirmed'],
                 'timezone' => ['required', 'string', 'timezone'],
                 'termsAndPrivacyPolicyAccepted' => 'accepted',
             ]);
@@ -100,15 +115,17 @@ class Register extends Component
             event(
                 new Registered(
                     ($user = User::create([
+                        'name' => $validated['name'],
                         'username' => $validated['username'],
                         'email' => $validated['email'],
                         'password' => Hash::make($validated['password']),
                         'unhashed_password' => $validated['password'],
-                        'mobile_number' => $validated['country_code'].$validated['mobile_number'],
+                        'mobile_number' => filled($validated['mobile_number']) ? $validated['country_code'].$validated['mobile_number'] : '',
                         'withdrawal_password' => Hash::make($validated['withdrawal_password']),
                         'balance' => 1000,
                         'training_balance' => 0,
                         'has_made_first_deposit' => false,
+                        'is_training' => false,
                         'tasks_completed' => 0,
                         'task_pole' => 35,
                         'task_batch' => 0,
@@ -153,6 +170,8 @@ class Register extends Component
                 navigate: false,
             );
         } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->dispatch('signup-error', message: $e->validator->errors()->first())->self();
+
             throw $e;
         } catch (\Throwable $e) {
             Log::error('Registration failed', ['exception' => $e]);

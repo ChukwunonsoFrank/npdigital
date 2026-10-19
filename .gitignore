@@ -3,8 +3,14 @@
 /public/hot
 /public/storage
 # /public/build
+.DS_Store
 /storage/*.key
 /storage/pail
+!/storage/app/
+!/storage/app/public/
+!/storage/app/public/warehouse/
+!/storage/app/public/warehouse/normal/
+!/storage/app/public/warehouse/normal/**
 /vendor
 .env
 .env.backup
@@ -21,6 +27,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.amp/
+/.commandcode/
 IntelephenseHelper.php
 CLAUDE.md
 AGENTS.md

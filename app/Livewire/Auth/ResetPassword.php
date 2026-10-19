@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.auth.layout')]
+#[Title('Reset Password')]
 class ResetPassword extends Component
 {
     #[Locked]
@@ -23,6 +26,13 @@ class ResetPassword extends Component
     public string $password = '';
 
     public string $password_confirmation = '';
+
+    public function exception(\Throwable $e): void
+    {
+        if ($e instanceof ValidationException) {
+            $this->dispatch('notify', message: $e->validator->errors()->first());
+        }
+    }
 
     /**
      * Mount the component.
@@ -65,12 +75,13 @@ class ResetPassword extends Component
         // redirect them back to where they came from with their error message.
         if ($status != Password::PasswordReset) {
             $this->addError('email', __($status));
+            $this->dispatch('notify', message: __($status));
 
             return;
         }
 
         Session::flash('status', __($status));
 
-        $this->redirectRoute('login', navigate: true);
+        $this->redirectRoute('login', navigate: false);
     }
 }

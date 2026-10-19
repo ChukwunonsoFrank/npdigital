@@ -41,7 +41,7 @@
             <button type="button" wire:key="pending-{{ $task->id }}" wire:click="openSubmission({{ $task->id }})"
                 class="block w-full rounded-lg border border-amber-300 bg-amber-50 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-100">
                 <div class="flex items-start gap-3">
-                    <img src="{{ route('storage.file', $task->task_image_path) }}" alt="{{ $task->title }}"
+                    <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" alt="{{ $task->title }}"
                         class="h-16 w-16 shrink-0 rounded-lg object-cover">
                     <div class="min-w-0">
                         <p class="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-600">
@@ -52,7 +52,7 @@
                         <p class="mt-0.5 text-xs text-muted-foreground">Cost:
                             <span class="font-semibold text-foreground">${{ number_format((float) $task->cost, 2) }}</span>
                             &middot; Profit:
-                            <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * ($commissionPercentage / 100), 2) }}</span>
+                            <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * (($task->commission_percentage ?? $commissionPercentage) / 100), 2) }}</span>
                         </p>
                         <p class="mt-0.5 text-[10px] text-amber-600">Tap to submit this product</p>
                     </div>
@@ -70,14 +70,14 @@
                         @foreach ($submittedTasks as $task)
                             <div wire:key="submitted-{{ $task->id }}"
                                 class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                                <img src="{{ route('storage.file', $task->task_image_path) }}" alt="{{ $task->title }}"
+                                <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" alt="{{ $task->title }}"
                                     class="h-12 w-12 shrink-0 rounded-lg object-cover">
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-semibold text-foreground">{{ $task->title }}</p>
                                     <p class="text-xs text-muted-foreground">Cost:
                                         <span class="font-semibold text-foreground">${{ number_format((float) $task->cost, 2) }}</span>
                                         &middot; Profit:
-                                        <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * ($commissionPercentage / 100), 2) }}</span>
+                                        <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * (($task->commission_percentage ?? $commissionPercentage) / 100), 2) }}</span>
                                     </p>
                                     <p class="mt-0.5 text-[10px] text-muted-foreground">
                                         {{ $task->created_at->format('M d, Y h:i A') }}</p>
@@ -104,7 +104,7 @@
     </div>
 
     <x-dashboard.task-modal :pending-task="$pendingTask" :commission="$commission"
-        :commission-percentage="$commissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert" />
+        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert" />
 </div>
 
 <script>
@@ -145,6 +145,10 @@
         });
 
         $wire.on('task-completed', (event) => {
+            toast(event.message)
+        });
+
+        $wire.on('upgrade-required', (event) => {
             toast(event.message)
         });
     </script>

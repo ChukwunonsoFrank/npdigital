@@ -77,6 +77,7 @@ it('renders the redesigned submission records page content', function () {
 });
 
 it('renders the activities page content', function () {
+    $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
     $user = User::factory()->create();
 
     Livewire::actingAs($user)
@@ -97,7 +98,7 @@ it('renders the activities page content', function () {
         ->assertSee('Platinum')
         ->assertSee('Diamond')
         ->assertSee('$7,999')
-        ->assertSee('*50*')
+        ->assertSeeInOrder(['$7,999', '50', '1.50%'])
         ->assertSee('1.50%')
         ->assertSee('Deposit')
         ->assertSee('Bonuses!')
@@ -114,12 +115,13 @@ it('renders the activities page content', function () {
         ->assertSee('assets/img/platinum.png')
         ->assertSee('assets/img/diamond.png')
         ->assertSee('$0 / $399')
-        ->assertSee('Need $399 more')
-        ->assertSee('Need $7999 more')
+        ->assertSee('Need $399.00 more')
+        ->assertSee('Need $7,999.00 more')
         ->assertDontSee('Unlocked');
 });
 
 it('shows membership level progress based on the user balance', function () {
+    $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
     $user = User::factory()->create(['balance' => 50000]);
 
     Livewire::actingAs($user)
@@ -127,9 +129,9 @@ it('shows membership level progress based on the user balance', function () {
         ->assertSuccessful()
         ->assertSee('$500 / $999')
         ->assertSee('50%')
-        ->assertSee('Need $499 more')
-        ->assertSee('Unlocked')
-        ->assertDontSee('Need $7999 more');
+        ->assertSee('Need $499.00 more')
+        ->assertSee('Request upgrade')
+        ->assertDontSee('Need $7,999.00 more');
 });
 
 it('authenticated users can view the activities page', function () {
@@ -423,5 +425,6 @@ it('renders the admin sidebar navigation', function () {
         ->toContain('User Management')
         ->toContain('Product Warehouse')
         ->toContain('Manage Admins')
-        ->toContain('Announcements');
+        ->toContain('Announcements')
+        ->not->toContain('Live Chat');
 });

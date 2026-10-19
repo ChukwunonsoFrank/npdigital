@@ -192,5 +192,9 @@
         $wire.on('minimum-balance-required', (event) => {
             toast(event.message)
         });
+
+        $wire.on('upgrade-required', (event) => {
+            toast(event.message)
+        });
     </script>
 @endscript

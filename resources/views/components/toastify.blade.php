@@ -40,7 +40,7 @@
 
         window.__npToastifyPatched = true;
 
-        var TOAST_CLASS = 'fixed z-30 bottom-[calc(68px_+_env(safe-area-inset-bottom)_+_1rem)]! left-4 right-4 rounded-2xl bg-[#141414] p-4 shadow-xl md:bottom-6! md:left-auto md:right-24 md:w-96 [&>.toast-close]:hidden';
+        var TOAST_CLASS = 'fixed z-30 bottom-[calc(68px_+_env(safe-area-inset-bottom)_+_1rem)]! left-4 right-4 rounded-2xl bg-[#141414] p-4 shadow-xl md:bottom-6! md:left-auto md:right-6 md:w-96 [&>.toast-close]:hidden';
 
         var ICON = '<span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white">' +
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3" aria-hidden="true">' +

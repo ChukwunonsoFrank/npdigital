@@ -5,6 +5,7 @@
     $profile = $variant === 'user'
         ? ['name' => (auth()->user()->name ?? null) ?: (auth()->user()->username ?? 'User'), 'meta' => auth()->user()->membership_level ?? '']
         : null;
+    $viewingAsUser = $variant === 'user' && session()->has('view_as_admin_id');
 @endphp
 
 <!doctype html>
@@ -34,7 +35,7 @@
     </style>
 </head>
 
-<body class="np-shell">
+<body @class(['np-shell', 'admin-shell' => $variant === 'admin'])>
     <div x-data="{ open: false, collapsed: false }" class="group/sidebar-wrapper flex min-h-svh w-full">
         <div class="panel-shell flex h-dvh min-h-0 w-full overflow-hidden">
             <div x-cloak x-show="open" @click="open = false" class="fixed inset-0 z-30 bg-gray-900/50 md:hidden"></div>
@@ -64,6 +65,29 @@
                 </x-dashboard.header>
 
                 <main class="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain">
+                    @if ($viewingAsUser)
+                        <div class="px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6">
+                            <div class="mx-auto w-full max-w-[1800px]">
+                                <div
+                                    class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/40 bg-emerald-50 px-4 py-3 dark:border-emerald-400/30 dark:bg-emerald-950/40">
+                                    <p class="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                        <x-dashboard.icon name="eye" class="h-4 w-4" />
+                                        Viewing as user — read-only admin preview
+                                    </p>
+
+                                    <form method="POST" action="{{ route('view-as.exit') }}">
+                                        @csrf
+                                        <button type="submit"
+                                            class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                            <x-dashboard.icon name="arrow-left" class="h-4 w-4" />
+                                            Back to Admin
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="p-3 sm:p-4 lg:p-6">
                         <div class="mx-auto min-w-0 w-full max-w-[1800px]">
                             {{ $slot }}
@@ -89,6 +113,27 @@
     <x-toastify />
 
     @livewireScripts
+    @fluxScripts
+
+    @if ($viewingAsUser)
+        <script>
+            document.addEventListener('livewire:init', () => {
+                Livewire.hook('request', ({ fail }) => {
+                    fail(({ status, preventDefault }) => {
+                        if (status !== 403) {
+                            return;
+                        }
+
+                        preventDefault();
+
+                        if (window.showToast) {
+                            window.showToast('Read-only preview — actions are disabled while viewing a user.');
+                        }
+                    });
+                });
+            });
+        </script>
+    @endif
 
     @if ($variant === 'user')
         <script>

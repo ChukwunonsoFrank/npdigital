@@ -4,7 +4,7 @@
         @if ($task)
             <div class="section mt-2">
                 <div class="card">
-                    <img src="{{ route('storage.file', $task->task_image_path) }}" class="card-img-top" alt="image">
+                    <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" class="card-img-top" alt="image">
                     <div class="card-body">
                         <h6 class="card-title text-black text-center mb-3 fs-6">{{ $task->title }}</h6>
                         <h5 class="card-title text-black text-center font-bold mb-3">Rate Us Now</h5>
@@ -55,3 +55,13 @@
     </div>
     <!-- * App Capsule -->
 </div>
+
+@script
+    <script>
+        $wire.on('upgrade-required', (event) => {
+            if (window.showToast) {
+                window.showToast(event.message);
+            }
+        });
+    </script>
+@endscript

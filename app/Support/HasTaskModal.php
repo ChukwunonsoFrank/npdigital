@@ -59,6 +59,12 @@ trait HasTaskModal
             return;
         }
 
+        if ($this->blockedByRequiredUpgrade(auth()->user())) {
+            $this->closeTaskModal();
+
+            return;
+        }
+
         $this->completeTask(auth()->user(), $task, $this->rating, $this->review);
 
         session()->forget('task_completed');

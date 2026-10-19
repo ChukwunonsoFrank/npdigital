@@ -49,6 +49,22 @@ test('users can authenticate using the login screen', function () {
     );
 });
 
+test('admins are redirected to the admin dashboard after login', function () {
+    Notification::fake();
+    config(['services.recaptcha.enabled' => false]);
+
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::test(Login::class)
+        ->set('username', $admin->username)
+        ->set('password', 'password')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect('/admin/dashboard');
+
+    $this->assertAuthenticatedAs($admin);
+});
+
 test('login updates the users timezone when the browser supplies a valid timezone', function () {
     Notification::fake();
     Http::fake([
@@ -134,6 +150,24 @@ test('users can authenticate without recaptcha when recaptcha is disabled', func
         ->assertHasNoErrors();
 
     $this->assertAuthenticated();
+});
+
+test('users can sign in with their email and receive a toast for invalid credentials', function () {
+    Notification::fake();
+    config(['services.recaptcha.enabled' => false]);
+    $user = User::factory()->create(['username' => 'janesmith', 'email' => 'jane@example.com']);
+
+    $form = Livewire::test(Login::class)
+        ->set('username', 'jane@example.com')
+        ->set('password', 'incorrect-password')
+        ->call('login')
+        ->assertHasErrors('username')
+        ->assertDispatched('login-error', message: __('auth.failed'));
+
+    $this->assertGuest();
+
+    $form->set('password', 'password')->call('login')->assertHasNoErrors()->assertRedirect('/dashboard');
+    $this->assertAuthenticatedAs($user);
 });
 
 test('users can logout', function () {

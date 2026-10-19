@@ -1,8 +1,9 @@
-<x-mail::layout>
+@props(['title' => 'Your NP Digital account'])
+<x-mail::layout :title="$title">
 {{-- Header --}}
 <x-slot:header>
 <x-mail::header :url="config('app.url')">
-    {{ config('app.name') }}
+NP Digital
 </x-mail::header>
 </x-slot:header>
 
@@ -21,9 +22,9 @@
 {{-- Footer --}}
 <x-slot:footer>
 <x-mail::footer>
-© {{ date('Y') }} {{ config('app.name') }} Global. {{ __('All rights reserved.') }}
-<br><br>
-<a href="https://app.voldexglobal.com" target="_blank" rel="noopener noreferrer">app.voldexglobal.com</a> | <a href="mailto:voldexcustomersservice@gmail.com">voldexcustomersservice@gmail.com</a>
+© {{ date('Y') }} NP Digital. {{ __('All rights reserved.') }}
+<br>
+<a href="{{ config('app.url') }}">Website</a> &nbsp;&middot;&nbsp; <a href="mailto:{{ config('mail.support_address') }}">Contact support</a>
 </x-mail::footer>
 </x-slot:footer>
 </x-mail::layout>

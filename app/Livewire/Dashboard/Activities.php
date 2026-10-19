@@ -2,34 +2,33 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\MembershipLevel;
+use App\Models\PlatformSetting;
+use App\Models\UpgradeRequest;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('components.layouts.dashboard')]
 class Activities extends Component
 {
+    public function requestUpgrade(string $levelName): void
+    {
+        $this->resetValidation();
+        UpgradeRequest::submit(auth()->user(), $levelName);
+        $this->dispatch('notify', message: 'Upgrade request submitted. An admin will review it shortly.', type: 'success');
+    }
+
     public function render()
     {
         $currentCents = (int) (auth()->user()->balance ?? 0);
+        $settings = PlatformSetting::current();
+        $checkInProgram = $settings->checkInProgram();
 
         return view('livewire.dashboard.activities', [
-            'checkInMilestones' => [
-                ['day' => 3, 'reward' => '$500'],
-                ['day' => 5, 'reward' => '$1,000'],
-                ['day' => 15, 'reward' => '$1,500'],
-                ['day' => 30, 'reward' => '$2,000'],
-            ],
-            'checkInTerms' => [
-                'Every user is required to complete 2 sets a day to be entitled for this program.',
-                'Withdrawable incentives are to be credited to your account consecutively 3, 5, 15 & 30 days.',
-            ],
-            'membershipChart' => [
-                ['name' => 'Normal', 'deposit' => '$99', 'tasks' => '*30*', 'commission' => '0.50%'],
-                ['name' => 'Silver', 'deposit' => '$399', 'tasks' => '*35*', 'commission' => '0.75%'],
-                ['name' => 'Gold', 'deposit' => '$999', 'tasks' => '*40*', 'commission' => '1.00%'],
-                ['name' => 'Platinum', 'deposit' => '$3,999', 'tasks' => '*45*', 'commission' => '1.25%'],
-                ['name' => 'Diamond', 'deposit' => '$7,999', 'tasks' => '*50*', 'commission' => '1.50%'],
-            ],
+            'checkInMilestones' => $checkInProgram['milestones'],
+            'checkInTerms' => preg_split('/\R+/', $checkInProgram['terms']),
+            'membershipChart' => $settings->membershipChart(),
+            'membershipPerks' => $settings->membershipPerks(),
             'chartTerms' => [
                 'Every user is required to complete 2 sets a day to be entitled for this program.',
                 'Withdrawable incentives are to be credited to your account consecutively 3, 5, 15 & 30 days.',
@@ -58,22 +57,36 @@ class Activities extends Component
             ['name' => 'Diamond', 'image' => 'assets/img/diamond.png', 'border' => 'hsl(210 70% 45%)', 'percentage' => '1.50', 'tasks' => 50, 'target' => 7999, 'accent' => 'hsl(210 75% 45%)', 'accent_border' => 'hsl(210 75% 55%)'],
         ];
 
-        return array_map(function (array $level) use ($currentCents): array {
+        $configuredLevels = MembershipLevel::query()->get()->keyBy('name');
+        $currentPercentage = (float) ($configuredLevels->get(auth()->user()->membership_level)?->percentage ?? 0);
+        $pendingLevelId = UpgradeRequest::query()->where('user_id', auth()->id())->where('status', 'pending')->value('membership_level_id');
+
+        return array_map(function (array $level) use ($currentCents, $configuredLevels, $currentPercentage, $pendingLevelId): array {
             if ($level['target'] === null) {
                 return $level + ['progress' => null];
             }
 
-            $targetCents = $level['target'] * 100;
-            $percent = min(100, (int) floor($currentCents / $targetCents * 100));
+            $configured = $configuredLevels->get($level['name']);
+            $targetCents = (int) round((float) ($configured?->minimum_balance ?? $level['target']) * 100);
+            $isHigher = $configured && (float) $configured->percentage > $currentPercentage;
+            $canRequest = $isHigher && $pendingLevelId === null && $currentCents >= $targetCents;
+            $percent = $targetCents > 0 ? max(0, min(100, (int) floor($currentCents / $targetCents * 100))) : 100;
+            $button = match (true) {
+                ! $configured => 'Unavailable',
+                ! $isHigher => 'Current level or below',
+                $pendingLevelId === $configured->id => 'Upgrade pending',
+                $pendingLevelId !== null => 'Another upgrade pending',
+                $canRequest => 'Request upgrade',
+                default => 'Need $'.number_format(($targetCents - $currentCents) / 100, 2).' more',
+            };
 
             return $level + [
                 'progress' => [
                     'current' => '$'.number_format($currentCents / 100, 0),
-                    'target' => '$'.number_format($level['target'], 0, '.', ''),
+                    'target' => '$'.number_format($targetCents / 100, 2),
                     'percent' => $percent,
-                    'button' => $currentCents >= $targetCents
-                        ? 'Unlocked'
-                        : 'Need $'.number_format(($targetCents - $currentCents) / 100, 0, '.', '').' more',
+                    'can_request' => $canRequest,
+                    'button' => $button,
                 ],
             ];
         }, $levels);

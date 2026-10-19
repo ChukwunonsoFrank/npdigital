@@ -6,6 +6,7 @@ use App\Notifications\UserLoggedIn;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
@@ -20,10 +21,10 @@ use Livewire\Component;
 #[Title('Login')]
 class Login extends Component
 {
-    #[Validate('required|string')]
+    #[Validate('required|string', as: 'email or username', onUpdate: false)]
     public string $username = '';
 
-    #[Validate('required|string')]
+    #[Validate('required|string', onUpdate: false)]
     public string $password = '';
 
     public bool $remember = false;
@@ -50,7 +51,7 @@ class Login extends Component
             if (
                 ! Auth::attempt(
                     [
-                        'username' => $this->username,
+                        (filter_var($this->username, FILTER_VALIDATE_EMAIL) ? 'email' : 'username') => $this->username,
                         'password' => $this->password,
                     ],
                     $this->remember,
@@ -77,14 +78,19 @@ class Login extends Component
             session()->flash('just_logged_in', true);
 
             if (Auth::user()->is_admin) {
-                return redirect('/admin/dashboard/users');
+                return redirect('/admin/dashboard');
             }
 
             $this->redirectIntended(
                 default: '/dashboard',
             );
+        } catch (ValidationException $e) {
+            $this->dispatch('login-error', message: $e->validator->errors()->first())->self();
+
+            throw $e;
         } catch (\Exception $e) {
-            $this->dispatch('login-error', message: $e->getMessage())->self();
+            Log::error('Login failed', ['exception' => $e]);
+            $this->dispatch('login-error', message: 'Something went wrong while signing in. Please try again.')->self();
         }
     }
 

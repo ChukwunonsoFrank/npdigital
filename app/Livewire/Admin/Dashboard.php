@@ -5,9 +5,11 @@ namespace App\Livewire\Admin;
 use App\Models\Bot;
 use App\Models\Deposit;
 use App\Models\Strategy;
+use App\Models\UpgradeRequest;
 use App\Models\User;
 use App\Models\Withdrawal;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -157,12 +159,26 @@ class Dashboard extends Component
     //     }
     // }
 
-    public function render()
+    public function render(): View
     {
         // $activeBots = Bot::with('user')
         //     ->where('status', 'active')
         //     ->paginate(10);
 
-        return view('livewire.admin.dashboard');
+        $transactions = collect();
+
+        foreach ([Deposit::class, Withdrawal::class] as $model) {
+            $transactions = $transactions->concat(
+                $model::query()->with('user')
+                    ->whereHas('user', fn ($query) => $query->where('is_admin', false))
+                    ->latest()->orderByDesc('id')->limit(5)->get(),
+            );
+        }
+
+        return view('livewire.admin.dashboard', [
+            'upgradeRequests' => UpgradeRequest::query()->with(['user', 'membershipLevel'])
+                ->latest()->orderByDesc('id')->limit(5)->get(),
+            'transactions' => $transactions->sortByDesc('created_at')->take(5),
+        ]);
     }
 }

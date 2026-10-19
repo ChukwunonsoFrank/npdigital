@@ -1,59 +1,18 @@
 <div>
-    <div class="section mt-5 mb-3 text-center">
-        <img style="display: inline;" src="{{ asset('assets/img/logo.png') }}" width="180" alt="logo">
-    </div>
-
-    <div class="section mb-5 p-2">
-        <form wire:submit="resetPassword">
-            <div class="card">
-                <div class="section mt-2 text-start">
-                    <h3>Reset password</h3>
-                    <p>Enter your new password below.</p>
-                </div>
-
-                <div class="card-body pb-1">
-                    <div class="form-group boxed">
-                        <div class="input-wrapper">
-                            <label class="label" for="email">Email</label>
-                            <input wire:model="email" type="email" class="form-control" id="email"
-                                autocomplete="email" placeholder="Your email" required>
-                        </div>
-                        @error('email')
-                            <div class="text-danger mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group boxed">
-                        <div class="input-wrapper">
-                            <label class="label" for="password">New password</label>
-                            <input wire:model="password" type="password" class="form-control" id="password"
-                                autocomplete="new-password" placeholder="Your new password" required>
-                        </div>
-                        @error('password')
-                            <div class="text-danger mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group boxed">
-                        <div class="input-wrapper">
-                            <label class="label" for="password_confirmation">Confirm new password</label>
-                            <input wire:model="password_confirmation" type="password" class="form-control"
-                                id="password_confirmation" autocomplete="new-password"
-                                placeholder="Confirm your new password" required>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-links mt-2">
-                <div>
-                    <a href="{{ route('login') }}">Back to Log in</a>
-                </div>
-            </div>
-
-            <div class="form-button-group transparent">
-                <button type="submit" class="btn btn-primary btn-block btn-lg">Reset password</button>
-            </div>
+    <x-auth.card heading="Reset Password" :back="route('login')">
+        <p class="text-center text-sm leading-relaxed text-muted-foreground">Choose a new password to securely access your account.</p>
+        <form wire:submit="resetPassword" class="space-y-5">
+            <x-auth.field name="email" label="Email" type="email" placeholder="you@example.com" autocomplete="email" />
+            <x-auth.field name="password" label="New Password" icon="lock" type="password" placeholder="New password" autocomplete="new-password" />
+            <x-auth.field name="password_confirmation" label="Confirm Password" icon="lock" type="password" placeholder="Confirm password" autocomplete="new-password" />
+            @error('email')
+                <a href="{{ route('password.request') }}" class="block text-sm font-semibold text-primary hover:underline">Request a new reset link</a>
+            @enderror
+            <flux:button type="submit" variant="primary" class="auth-submit h-12! w-full rounded-xl! text-base! font-black! shadow-lg" wire:loading.attr="disabled" wire:target="resetPassword">
+                <span wire:loading.remove wire:target="resetPassword">Reset Password</span>
+                <span wire:loading wire:target="resetPassword">Resetting…</span>
+            </flux:button>
         </form>
-    </div>
+        <p class="text-center text-sm font-bold text-muted-foreground">Back to <a href="{{ route('login') }}" class="font-extrabold text-primary hover:underline">Sign In</a></p>
+    </x-auth.card>
 </div>

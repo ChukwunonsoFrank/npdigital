@@ -35,7 +35,7 @@
 
             <h2 class="px-6 text-center font-display text-lg font-bold text-foreground">{{ $pendingTask->title }}</h2>
 
-            <img src="{{ route('storage.file', $pendingTask->task_image_path) }}" alt="{{ $pendingTask->title }}"
+            <img src="{{ \App\Support\ProductWarehouse::imageUrl($pendingTask->task_image_path) }}" alt="{{ $pendingTask->title }}"
                 class="mx-auto mt-4 h-44 w-44 rounded-lg object-cover">
 
             <div class="mt-4 space-y-1 text-center text-sm">

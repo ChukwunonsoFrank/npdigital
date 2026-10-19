@@ -463,3 +463,134 @@ test('user who has completed three task batches is blocked until reset', functio
         ->call('startTask')
         ->assertDispatched('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.');
 });
+
+test('user with a required upgrade cannot start tasks', function () {
+    MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
+
+    $user = User::factory()->create([
+        'membership_level' => 'VIP0',
+        'required_upgrade_level' => 'Diamond',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_pole' => 35,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertSet('showTaskModal', false)
+        ->assertDispatched('upgrade-required', message: 'You must upgrade to Diamond before you can submit tasks.');
+
+    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('user with a required upgrade cannot submit a pending task', function () {
+    MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
+
+    $user = User::factory()->create([
+        'membership_level' => 'VIP0',
+        'required_upgrade_level' => 'Diamond',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_pole' => 35,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    $completedTask = CompletedTask::create([
+        'user_id' => $user->id,
+        'title' => 'Test Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'rating' => '',
+        'rating_id' => '',
+        'status' => 'pending',
+    ]);
+
+    session(['pending_task_id' => $completedTask->id]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('submitTask')
+        ->assertSet('showTaskModal', false)
+        ->assertDispatched('upgrade-required', message: 'You must upgrade to Diamond before you can submit tasks.');
+
+    expect($completedTask->fresh()->status)->toBe('pending')
+        ->and($user->fresh()->tasks_completed)->toBe(0)
+        ->and($user->fresh()->balance)->toBe(50000);
+});
+
+test('optimize page blocks submission while an upgrade is required', function () {
+    MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
+
+    $user = User::factory()->create([
+        'membership_level' => 'VIP0',
+        'required_upgrade_level' => 'Diamond',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_pole' => 35,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    $completedTask = CompletedTask::create([
+        'user_id' => $user->id,
+        'title' => 'Test Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'rating' => '',
+        'rating_id' => '',
+        'status' => 'pending',
+    ]);
+
+    session(['pending_task_id' => $completedTask->id]);
+
+    Livewire::actingAs($user)
+        ->test(Optimize::class)
+        ->call('submitTask')
+        ->assertNoRedirect()
+        ->assertDispatched('upgrade-required', message: 'You must upgrade to Diamond before you can submit tasks.');
+
+    expect($completedTask->fresh()->status)->toBe('pending');
+});
+
+test('user who upgraded to the required level can start and submit tasks', function () {
+    MembershipLevel::create(['name' => 'Silver', 'percentage' => '0.75']);
+    MembershipLevel::create(['name' => 'Gold', 'percentage' => '1.00']);
+
+    $user = User::factory()->create([
+        'membership_level' => 'Gold',
+        'required_upgrade_level' => 'Silver',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_pole' => 35,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Task::create([
+        'title' => 'Gold Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'task_level' => 'Gold',
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertSet('showTaskModal', true)
+        ->call('submitTask')
+        ->assertSet('showTaskModal', false)
+        ->assertDispatched('task-completed', message: 'Task completed successfully');
+
+    $completedTask = CompletedTask::where('user_id', $user->id)->first();
+
+    expect($completedTask->status)->toBe('approved')
+        ->and($user->fresh()->tasks_completed)->toBe(1);
+});

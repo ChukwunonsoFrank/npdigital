@@ -14,11 +14,11 @@
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-foreground" for="cryptocurrency">Select Cryptocurrency</label>
                     <div class="relative">
-                        <select id="cryptocurrency" wire:model="cryptocurrency"
+                        <select id="cryptocurrency" wire:model.live="cryptocurrency"
                             class="h-10 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
                             <option value="">Choose a cryptocurrency</option>
                             @foreach ($cryptocurrencies as $code => $label)
-                                <option value="{{ $code }}">{{ $label }}</option>
+                                <option value="{{ $code }}">{{ \App\Support\Cryptocurrencies::symbol($code) }} {{ $label }}</option>
                             @endforeach
                         </select>
                         <x-dashboard.icon name="chevron-down"
@@ -28,6 +28,30 @@
                         <p class="text-xs text-destructive">{{ $message }}</p>
                     @enderror
                 </div>
+
+                <p wire:loading wire:target="cryptocurrency" role="status" class="text-sm text-muted-foreground">Loading deposit address…</p>
+
+                @if (isset($cryptocurrencies[$cryptocurrency]))
+                    <div wire:key="deposit-address-{{ $cryptocurrency }}" wire:loading.remove wire:target="cryptocurrency" class="space-y-2">
+                        <p id="deposit-address-label" class="text-sm font-medium text-foreground">Deposit Address ({{ $cryptocurrency }})</p>
+                        @if ($depositAddress)
+                            <div class="flex items-start gap-2">
+                                <p id="deposit-address" aria-labelledby="deposit-address-label"
+                                    class="min-w-0 flex-1 break-all rounded-md border border-input bg-muted/50 px-3 py-2 font-mono text-sm text-foreground">{{ $depositAddress }}</p>
+                                <button type="button" aria-label="Copy deposit address"
+                                    @click="Promise.resolve().then(() => navigator.clipboard.writeText(@js($depositAddress)))
+                                        .then(() => window.showToast('Deposit address copied.'))
+                                        .catch(() => window.showToast('Unable to copy address. Please copy it manually.'))"
+                                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-input bg-background text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                    <x-dashboard.icon name="copy" class="h-4 w-4" />
+                                </button>
+                            </div>
+                            <p class="text-xs text-muted-foreground">Send only <strong>{{ $cryptocurrencies[$cryptocurrency] }}</strong> to this address.</p>
+                        @else
+                            <p role="status" class="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">Deposit address not configured. Please contact support before sending funds.</p>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-foreground" for="amount">Amount (USD equivalent)</label>

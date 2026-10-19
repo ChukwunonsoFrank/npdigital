@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\PlatformSetting;
 use App\Support\Cryptocurrencies;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -46,6 +47,7 @@ class Deposit extends Component
     {
         return view('livewire.dashboard.deposit', [
             'cryptocurrencies' => Cryptocurrencies::all(),
+            'depositAddress' => PlatformSetting::current()->deposit_wallet_addresses[$this->cryptocurrency] ?? null,
         ]);
     }
 }

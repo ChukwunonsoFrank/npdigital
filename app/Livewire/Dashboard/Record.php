@@ -64,7 +64,8 @@ class Record extends Component
             ->paginate(10);
 
         $pendingTask = $this->pendingTask();
-        $commission = $pendingTask ? (float) $pendingTask->cost * ($commissionPercentage / 100) : 0;
+        $pendingCommissionPercentage = (float) ($pendingTask?->commission_percentage ?? $commissionPercentage);
+        $commission = $pendingTask ? (float) $pendingTask->cost * ($pendingCommissionPercentage / 100) : 0;
 
         return view('livewire.dashboard.record', [
             'pendingTasks' => $pendingTasks,
@@ -73,6 +74,7 @@ class Record extends Component
             'pendingCount' => $pendingTasks->count(),
             'totalEarned' => ((int) $user->total_commission) / 100,
             'commissionPercentage' => $commissionPercentage,
+            'pendingCommissionPercentage' => $pendingCommissionPercentage,
             'pendingTask' => $pendingTask,
             'commission' => $commission,
         ]);

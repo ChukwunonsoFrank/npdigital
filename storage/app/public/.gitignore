@@ -1,2 +1,13 @@
 *
+!warehouse/
+!warehouse/normal/
+!warehouse/normal/**
+!warehouse/silver/
+!warehouse/silver/**
+!warehouse/gold/
+!warehouse/gold/**
+!warehouse/platinum/
+!warehouse/platinum/**
+!warehouse/diamond/
+!warehouse/diamond/**
 !.gitignore

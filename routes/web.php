@@ -1,6 +1,7 @@
 <?php
 
 // use App\Http\Controllers\PrivateFileController;
+use App\Http\Controllers\ExitViewAsUserController;
 use App\Http\Controllers\StorageFileController;
 use App\Livewire\Admin\AdminDeposit;
 use App\Livewire\Admin\AdminDepositDetails;
@@ -20,8 +21,10 @@ use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EmailBroadcast;
 use App\Livewire\Admin\PaymentMethodDetails;
 use App\Livewire\Admin\PaymentMethods;
+use App\Livewire\Admin\Payments;
 use App\Livewire\Admin\Users;
 use App\Livewire\Admin\UsersDetails;
+use App\Livewire\Admin\Warehouse;
 use App\Livewire\Dashboard\AboutUs;
 use App\Livewire\Dashboard\Account;
 // use App\Livewire\Dashboard\AccountInformation;
@@ -76,6 +79,7 @@ use App\Livewire\Dashboard\WithdrawPasswordStep;
 // use App\Livewire\Terms;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
 
 Route::get('/storage-file/{path}', [StorageFileController::class, 'show'])
     ->where('path', '.*')
@@ -96,11 +100,15 @@ Route::get('/cache', function () {
     dd('cached');
 });
 
+Route::post('/view-as/exit', ExitViewAsUserController::class)
+    ->middleware('auth')
+    ->name('view-as.exit');
+
 // Route::get('/private-file/{path}', [PrivateFileController::class, 'show'])
 //     ->where('path', '.*')
 //     ->name('private.file');
 
-Route::redirect('/', '/dashboard')->name('home');
+Route::view('/', 'home')->name('home');
 
 Route::middleware(['auth', 'user', 'banned'])->group(function () {
     Route::get('/dashboard', Index::class)
@@ -267,7 +275,25 @@ Route::middleware(['auth', 'admin'])
         Route::get('/dashboard', Dashboard::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard');
-        Route::get('/dashboard/users', Users::class)
+        Route::get('/payments', Payments::class)
+            ->middleware(['auth', 'verified'])
+            ->name('payments');
+        Volt::route('/training', 'admin.training')
+            ->middleware(['auth', 'verified'])
+            ->name('training');
+        Volt::route('/upgrades', 'admin.upgrades')
+            ->middleware(['auth', 'verified'])
+            ->name('upgrades');
+        Volt::route('/admins', 'admin.admins')
+            ->middleware(['auth', 'verified'])
+            ->name('admins');
+        Volt::route('/settings', 'admin.settings')
+            ->middleware(['auth', 'verified'])
+            ->name('settings');
+        Volt::route('/announcements', 'admin.announcements')
+            ->middleware(['auth', 'verified'])
+            ->name('announcements');
+        Route::get('/users', Users::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.users');
         Route::get('/dashboard/events', AdminEvents::class)
@@ -276,9 +302,12 @@ Route::middleware(['auth', 'admin'])
         Route::get('/dashboard/events/details', AdminEventDetails::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.events.details');
-        Route::get('/dashboard/tasks', AdminTasks::class)
+        Route::get('/product-tasks', AdminTasks::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.tasks');
+        Route::get('/warehouse', Warehouse::class)
+            ->middleware(['auth', 'verified'])
+            ->name('dashboard.warehouse');
         Route::get('/dashboard/tasks/details', AdminTaskDetails::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.tasks.details');

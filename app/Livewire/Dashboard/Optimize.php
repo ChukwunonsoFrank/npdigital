@@ -22,6 +22,10 @@ class Optimize extends Component
 
     public function submitTask(): void
     {
+        if ($this->blockedByRequiredUpgrade(auth()->user())) {
+            return;
+        }
+
         $task = CompletedTask::query()
             ->where('id', session('pending_task_id'))
             ->where('user_id', auth()->id())
@@ -54,9 +58,7 @@ class Optimize extends Component
             ->where('name', $user->membership_level)
             ->first();
 
-        $commission = $membershipLevel
-            ? (float) $task->cost * ($membershipLevel->percentage / 100)
-            : 0;
+        $commission = (float) $task->cost * (($task->commission_percentage ?? $membershipLevel?->percentage ?? 0) / 100);
 
         return view('livewire.dashboard.optimize', [
             'task' => $task,

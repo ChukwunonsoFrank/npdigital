@@ -301,6 +301,11 @@ class UsersDetails extends Component
                 }
 
                 $user->membership_level = $this->selectedMembershipLevel;
+
+                if ($user->required_upgrade_level !== null && ! $user->requiresUpgrade()) {
+                    $user->required_upgrade_level = null;
+                }
+
                 $user->save();
             });
 

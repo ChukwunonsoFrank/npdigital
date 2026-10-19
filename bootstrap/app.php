@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'banned' => \App\Http\Middleware\CheckBannedUser::class,
         ]);
 
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureViewAsUserIsReadOnly::class,
+            \App\Http\Middleware\CheckSuspendedUser::class,
+            \App\Http\Middleware\CheckPlatformMaintenance::class,
+        ]);
+
         $middleware->trustProxies(
             at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR |

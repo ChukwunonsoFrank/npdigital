@@ -21,6 +21,9 @@ class CompletedTask extends Model
         'rating_id',
         'status',
         'review',
+        'commission_percentage',
+        'warehouse_product_id',
+        'available_after_tasks',
     ];
 
     public function user(): BelongsTo

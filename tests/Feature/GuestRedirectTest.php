@@ -9,14 +9,13 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 it('redirects unauthenticated users to login for public pages', function (string $uri) {
     $this->get($uri)->assertRedirect(route('login'));
 })->with([
-    'homepage' => '/',
     'find-us' => '/find-us',
     'terms' => '/terms',
     'privacy' => '/privacy',
 ]);
 
-it('redirects authenticated users from homepage to dashboard', function () {
+it('shows the homepage to authenticated users', function () {
     $this->actingAs(User::factory()->create());
 
-    $this->get('/')->assertRedirect('/dashboard');
+    $this->get('/')->assertOk()->assertSee('Full-service digital marketing services');
 });

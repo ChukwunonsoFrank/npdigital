@@ -1,4 +1,7 @@
 <div x-data="{ open: null }" class="space-y-4 animate-fade-in sm:space-y-5">
+    @error('upgrade')
+        <p role="alert" class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{{ $message }}</p>
+    @enderror
     <div class="flex items-center gap-3 rounded-xl p-5 text-white shadow-sm sm:gap-4 sm:p-7"
         style="background: linear-gradient(120deg, #2f7fb8 0%, #8ec9e0 100%);">
         <a href="{{ route('dashboard') }}" wire:navigate aria-label="Back to dashboard"
@@ -57,7 +60,7 @@
                                 <div class="shrink-0 text-right">
                                     <p class="font-display text-xl font-bold"
                                         style="color: hsl(45 90% 60%); text-shadow: rgb(242 185 13 / 0.3) 0 0 12px;">
-                                        {{ $milestone['reward'] }}</p>
+                                        ${{ number_format((float) $milestone['reward'], (float) $milestone['reward'] == (int) $milestone['reward'] ? 0 : 2) }}</p>
                                 </div>
                             </div>
                         @endforeach
@@ -261,22 +264,12 @@
                         </div>
 
                         <ul class="mb-5 space-y-2.5">
-                            <li class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
-                                <span class="mt-0.5 text-[hsl(220,10%,55%)]">&bull;</span>
-                                {{ $level['name'] }} users are assigned general usage access to data collection
-                            </li>
-                            <li class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
-                                <span class="mt-0.5 text-[hsl(220,10%,55%)]">&bull;</span>
-                                Applicable to most data collection situations of light to medium level of usage involving the Products
-                            </li>
-                            <li class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
-                                <span class="mt-0.5 text-[hsl(220,10%,55%)]">&bull;</span>
-                                Profits of {{ $level['percentage'] }}% per Product - {{ $level['tasks'] }} products per set
-                            </li>
-                            <li class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
-                                <span class="mt-0.5 text-[hsl(220,10%,55%)]">&bull;</span>
-                                No access to other premium features
-                            </li>
+                            @foreach ($membershipPerks[$level['name']] as $perk)
+                                <li wire:key="level-perk-{{ $level['name'] }}-{{ $loop->index }}" class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
+                                    <span class="mt-0.5 shrink-0 text-[hsl(220,10%,55%)]">&bull;</span>
+                                    <span class="min-w-0 break-words">{{ $perk }}</span>
+                                </li>
+                            @endforeach
                         </ul>
 
                         @if ($level['progress'])
@@ -290,7 +283,9 @@
                                         style="width: {{ $level['progress']['percent'] }}%"></div>
                                 </div>
                                 <button type="button"
-                                    class="inline-flex h-9 w-full items-center justify-center whitespace-nowrap rounded-lg border text-sm font-bold text-white transition-colors hover:opacity-90"
+                                    wire:click="requestUpgrade('{{ $level['name'] }}')" wire:loading.attr="disabled"
+                                    @disabled(! $level['progress']['can_request'])
+                                    class="inline-flex h-9 w-full items-center justify-center whitespace-nowrap rounded-lg border text-sm font-bold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                                     style="background: {{ $level['accent'] }}; border-color: {{ $level['accent_border'] }};">
                                     {{ $level['progress']['button'] }}
                                 </button>

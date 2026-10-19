@@ -35,4 +35,20 @@ class Cryptocurrencies
     {
         return self::all()[$code] ?? (string) $code;
     }
+
+    public static function symbol(string $code): string
+    {
+        return match ($code) {
+            'BTC' => '₿',
+            'ETH' => 'Ξ',
+            'USDT-TRC20', 'USDT-ERC20' => '₮',
+            'BNB' => '◆',
+            'SOL' => '◎',
+            'XRP' => '✕',
+            'DOGE' => 'Ð',
+            'LTC' => 'Ł',
+            'TRX' => '◈',
+            default => $code,
+        };
+    }
 }

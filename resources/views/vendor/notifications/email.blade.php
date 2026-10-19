@@ -1,4 +1,4 @@
-<x-mail::message>
+<x-mail::message :title="$subject ?: 'Your NP Digital account'">
 {{-- Greeting --}}
 @if (!empty($greeting))
 # {{ $greeting }}
@@ -38,7 +38,7 @@ default => 'primary',
 {{ $salutation }}
 @else
 @lang('Thanks,')<br>
-@lang('The Voldex Team')
+@lang('The NP Digital Team')
 @endif
 
 {{-- Subcopy --}}

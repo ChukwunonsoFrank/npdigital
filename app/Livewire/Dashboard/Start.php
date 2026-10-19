@@ -43,6 +43,11 @@ class Start extends Component
     public function startTask(): void
     {
         $user = auth()->user();
+
+        if ($this->blockedByRequiredUpgrade($user)) {
+            return;
+        }
+
         $activeTaskBalanceInCents = $this->getActiveTaskBalanceInCents($user);
 
         if ($user->task_batch >= 3) {
@@ -103,13 +108,37 @@ class Start extends Component
             return;
         }
 
-        $task = Task::query()
-            ->where('task_level', $user->membership_level)
-            ->inRandomOrder()
+        $queuedTask = CompletedTask::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'queued')
+            ->where(function ($query) use ($user): void {
+                $query->whereNull('available_after_tasks')
+                    ->orWhere('available_after_tasks', '<=', $user->tasks_completed);
+            })
+            ->orderBy('id')
             ->first();
 
+        $group = $user->warehouseGroup();
+        $warehouseProduct = null;
+
+        if (! $queuedTask && $group) {
+            $warehouseProduct = $user->remainingWarehouseProducts($group['day'], $group['group'])[0] ?? null;
+            $task = $warehouseProduct ? new Task([
+                'title' => $warehouseProduct['name'],
+                'cost' => $warehouseProduct['price'],
+                'task_image_path' => $warehouseProduct['image'] ?? '',
+            ]) : null;
+        } else {
+            $task = $queuedTask ?? Task::query()
+                ->where('task_level', $user->membership_level)
+                ->inRandomOrder()
+                ->first();
+        }
+
         if (! $task) {
-            $this->dispatch('task-limit-reached', message: 'No tasks available for your membership level at this time.')->self();
+            $this->dispatch('task-limit-reached', message: $group
+                ? 'No products remaining in your assigned warehouse group. Contact support for a new group.'
+                : 'No tasks available for your membership level at this time.')->self();
 
             return;
         }
@@ -122,15 +151,31 @@ class Start extends Component
             return;
         }
 
-        $completedTask = CompletedTask::create([
-            'user_id' => $user->id,
-            'title' => $task->title,
-            'cost' => $task->cost,
-            'task_image_path' => $task->task_image_path,
-            'rating' => '0',
-            'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
-            'status' => 'pending',
-        ]);
+        if ($queuedTask) {
+            $activated = CompletedTask::query()
+                ->whereKey($queuedTask->id)
+                ->where('status', 'queued')
+                ->update(['status' => 'pending']);
+
+            if (! $activated) {
+                $this->redirect(route('dashboard.record'));
+
+                return;
+            }
+
+            $completedTask = $queuedTask;
+        } else {
+            $completedTask = CompletedTask::create([
+                'user_id' => $user->id,
+                'title' => $task->title,
+                'cost' => $task->cost,
+                'task_image_path' => $task->task_image_path,
+                'warehouse_product_id' => $warehouseProduct['id'] ?? null,
+                'rating' => '0',
+                'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
+                'status' => 'pending',
+            ]);
+        }
 
         session(['pending_task_id' => $completedTask->id]);
 
@@ -145,8 +190,8 @@ class Start extends Component
             ->where('name', $user->membership_level)
             ->first();
 
-        $commissionPercentage = (float) ($membershipLevel?->percentage ?? 0);
         $pendingTask = $this->pendingTask();
+        $commissionPercentage = (float) ($pendingTask?->commission_percentage ?? $membershipLevel?->percentage ?? 0);
         $commission = $pendingTask ? (float) $pendingTask->cost * ($commissionPercentage / 100) : 0;
 
         return view('livewire.dashboard.start', [

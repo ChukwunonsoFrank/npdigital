@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Dashboard\Deposit;
 use App\Models\Deposit as DepositModel;
+use App\Models\PlatformSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -23,6 +24,36 @@ it('renders the deposit crypto form', function () {
         ->assertSee('Amount (USD equivalent)')
         ->assertSee('Proof of Payment')
         ->assertSee('Submit Deposit Request');
+});
+
+it('shows only the selected platform address and its network disclaimer', function () {
+    $user = User::factory()->create();
+    $user->wallets()->create(['label' => 'Personal wallet', 'cryptocurrency' => 'SOL', 'address' => 'personal-solana-address']);
+    PlatformSetting::factory()->create(['deposit_wallet_addresses' => [
+        'USDT-TRC20' => 'platform-trc20-address',
+        'USDT-ERC20' => 'platform-erc20-address',
+        'SOL' => 'platform-solana-address',
+    ]]);
+
+    $component = Livewire::actingAs($user)->test(Deposit::class)
+        ->assertDontSee('Copy deposit address')
+        ->set('cryptocurrency', 'USDT-TRC20')
+        ->assertSee('platform-trc20-address')->assertDontSee('platform-erc20-address')
+        ->assertSeeHtml('Send only <strong>USDT (TRC20)</strong> to this address.')
+        ->assertSee('Copy deposit address')
+        ->set('cryptocurrency', 'USDT-ERC20')
+        ->assertSee('platform-erc20-address')->assertDontSee('platform-trc20-address')
+        ->assertSeeHtml('Send only <strong>USDT (ERC20)</strong> to this address.')
+        ->set('cryptocurrency', 'SOL')
+        ->assertSee('platform-solana-address')->assertDontSee('platform-erc20-address')
+        ->assertDontSee('personal-solana-address')
+        ->assertSeeHtml('Send only <strong>Solana (SOL)</strong> to this address.');
+
+    PlatformSetting::current()->update(['deposit_wallet_addresses' => ['SOL' => 'updated-solana-address']]);
+    $component->call('$refresh')->assertSee('updated-solana-address')->assertDontSee('platform-solana-address')
+        ->set('cryptocurrency', 'BTC')->assertSee('Deposit address not configured.')
+        ->assertDontSee('updated-solana-address')->assertDontSee('Copy deposit address')->assertDontSee('Send only')
+        ->set('cryptocurrency', '')->assertDontSee('Deposit address not configured.')->assertDontSee('Copy deposit address');
 });
 
 it('creates a pending deposit and redirects to the wallet page', function () {
