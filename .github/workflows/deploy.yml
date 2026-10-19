@@ -1,0 +1,132 @@
+name: Deploy to WhoGoHost
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-sftp-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    env:
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_PORT: ${{ secrets.SFTP_PORT }}
+      SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+      SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+      SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+      SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          for variable in SFTP_HOST SFTP_PORT SFTP_USERNAME SFTP_PASSWORD SFTP_REMOTE_PATH SFTP_KNOWN_HOSTS; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing required GitHub production secret: $variable" >&2
+              exit 1
+            fi
+          done
+          if [[ ! "$SFTP_REMOTE_PATH" =~ ^/[a-zA-Z0-9_./-]+$ ]] ||
+             [[ "$SFTP_REMOTE_PATH" =~ (^|/)\.\.?(/|$) ]] ||
+             [[ "$SFTP_REMOTE_PATH" =~ ^/+$ ]]; then
+            echo 'SFTP_REMOTE_PATH must be an absolute, dedicated application directory without spaces or dot segments.' >&2
+            exit 1
+          fi
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, zip
+          coverage: none
+
+      - name: Install production PHP dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble deployment
+        env:
+          DEPLOY_DIRECTORY: ${{ runner.temp }}/deployment
+        run: |
+          mkdir -p "$DEPLOY_DIRECTORY"
+          git archive HEAD app bootstrap config database public resources routes artisan composer.json composer.lock storage/app/public/warehouse | tar -x -C "$DEPLOY_DIRECTORY"
+          rm -rf "$DEPLOY_DIRECTORY/bootstrap/cache" "$DEPLOY_DIRECTORY/public/build"
+          mkdir -p "$DEPLOY_DIRECTORY/bootstrap/cache"
+          rsync -a vendor/ "$DEPLOY_DIRECTORY/vendor/"
+          rsync -a public/build/ "$DEPLOY_DIRECTORY/public/build/"
+          test -f "$DEPLOY_DIRECTORY/vendor/autoload.php"
+          test -f "$DEPLOY_DIRECTORY/public/build/manifest.json"
+
+      - name: Install SFTP client
+        run: sudo apt-get update && sudo apt-get install --yes lftp
+
+      - name: Configure server identity
+        run: |
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          cat > "$HOME/.lftprc" <<EOF
+          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          EOF
+          chmod 700 "$HOME/.ssh"
+          chmod 600 "$HOME/.ssh/known_hosts" "$HOME/.lftprc"
+
+      - name: Upload application over SFTP
+        env:
+          DEPLOY_DIRECTORY: ${{ runner.temp }}/deployment
+        run: |
+          lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<LFTP
+            set cmd:fail-exit true
+            set net:max-retries 2
+            set net:timeout 20
+            cd "$SFTP_REMOTE_PATH"
+            cls -l .deploy-target
+            mkdir -pf bootstrap/cache
+            mkdir -pf storage/app/private
+            mkdir -pf storage/app/public
+            mkdir -pf storage/framework/cache/data
+            mkdir -pf storage/framework/sessions
+            mkdir -pf storage/framework/testing
+            mkdir -pf storage/framework/views
+            mkdir -pf storage/logs
+            mirror --reverse --delete --verbose --parallel=4 \
+              --exclude-glob '.deploy-target' \
+              --exclude-glob '.env*' \
+              --exclude-glob '.user.ini' \
+              --exclude-glob 'public/.user.ini' \
+              --exclude-glob 'public/.well-known' \
+              --exclude-glob 'public/.well-known/**' \
+              --exclude-glob 'public/storage' \
+              --exclude-glob 'public/storage/**' \
+              --exclude-glob 'storage' \
+              --exclude-glob 'storage/**' \
+              --exclude-glob 'bootstrap/cache/**' \
+              --exclude-glob 'database/*.sqlite*' \
+              "$DEPLOY_DIRECTORY/" .
+            mirror --reverse --only-missing --verbose --parallel=4 \
+              "$DEPLOY_DIRECTORY/storage/app/public/warehouse/" storage/app/public/warehouse/
+            bye
+          LFTP
