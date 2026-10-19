@@ -35,7 +35,7 @@
     <nav aria-label="Main navigation" class="fixed inset-x-0 top-0 z-50 bg-card/95 shadow-sm">
         <div class="home-container flex h-16 items-center justify-between gap-3">
             <a href="{{ route('home') }}" aria-label="NP Digital home" class="min-w-0 shrink">
-                <img src="{{ asset('assets/np/logo-color.png') }}" alt="NP Digital" class="h-10 w-auto max-w-full object-contain sm:h-12 lg:h-14">
+                <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" class="h-auto w-[66px] max-w-full object-contain sm:w-[79px] lg:w-[92px]">
             </a>
             <div class="flex shrink-0 items-center gap-1 sm:gap-3">
                 <div class="gtranslate_wrapper" aria-label="Select language"></div>
@@ -59,7 +59,7 @@
                         Your browser does not support video. <a href="{{ asset('assets/np/home/creative-reel.webm') }}">Download our creative showcase</a>.
                     </video>
                     <div class="pointer-events-none absolute top-3 left-3 rounded-md bg-card/90 px-3 py-2 shadow-lg sm:top-4 sm:left-4">
-                        <img src="{{ asset('assets/np/logo-color.png') }}" alt="NP Digital" class="h-7 w-auto sm:h-8">
+                        <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" class="h-auto w-[46px] sm:w-[53px]">
                     </div>
                 </div>
             </div>
@@ -145,7 +145,7 @@
         <div class="home-container">
             <div class="mb-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                    <img src="{{ asset('assets/np/logo-inverse.png') }}" alt="NP Digital" class="mb-4 h-11 w-auto sm:h-12">
+                    <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" class="mb-4 h-auto w-[73px] rounded bg-white px-2 py-1 sm:w-[79px]">
                     <p class="text-sm leading-relaxed text-sidebar-foreground/60">NP Digital is a globally acclaimed digital marketing agency that helps businesses fulfill their potential through integrated digital marketing solutions.</p>
                 </div>
                 <div>

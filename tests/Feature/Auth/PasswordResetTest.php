@@ -16,7 +16,7 @@ test('reset password link screen can be rendered', function () {
 
     $response
         ->assertStatus(200)
-        ->assertSee(asset('assets/np/logo-color.png'))
+        ->assertSee(asset('assets/npdigital-logo.png'))
         ->assertSee('Send Reset Link');
 });
 
@@ -49,7 +49,7 @@ test('reset password screen can be rendered', function () {
 
         $response
             ->assertStatus(200)
-            ->assertSee(asset('assets/np/logo-color.png'))
+            ->assertSee(asset('assets/npdigital-logo.png'))
             ->assertSee('Reset Password');
 
         return true;

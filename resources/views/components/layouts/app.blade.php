@@ -52,7 +52,7 @@
             </a>
         </div>
         <div class="pageTitle">
-            <img src="{{ asset('assets/img/logo.png') }}" alt="logo" class="logo">
+            <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" class="logo">
         </div>
         <div class="right">
             <div class="headerButton">

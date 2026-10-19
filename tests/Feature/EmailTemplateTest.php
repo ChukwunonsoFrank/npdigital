@@ -25,7 +25,7 @@ test('outgoing emails share the branded template without losing their content', 
     $xpath = new DOMXPath($document);
 
     expect($html)
-        ->toContain(asset('assets/np/logo-color.png'), 'Keep your account secure', 'mailto:support@npdigital.work', 'Strategy. Performance. Growth.')
+        ->toContain(asset('assets/npdigital-logo.png'), 'Keep your account secure', 'mailto:support@npdigital.work', 'Strategy. Performance. Growth.')
         ->not->toContain('voldexcustomersservice', 'app.voldexglobal.com', 'npdigital-work.com/assets/', 'fridayudeme960@gmail.com', 'Your next chapter of growth starts here.');
     expect(html_entity_decode(strip_tags($html)))->toContain($content);
     expect($text)->toContain($content, 'The NP Digital Team', 'support@npdigital.work');

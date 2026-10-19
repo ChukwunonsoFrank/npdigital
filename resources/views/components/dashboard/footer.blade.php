@@ -68,7 +68,7 @@
 
 <footer class="bg-sidebar text-sidebar-foreground">
     <div class="mx-auto w-full max-w-[1800px] px-6 py-12 sm:px-10">
-        <img src="{{ asset('assets/np/logo-inverse.png') }}" alt="NP Digital" class="h-12 w-auto">
+        <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" class="h-auto w-[79px] rounded bg-white px-2 py-1">
 
         <div class="mt-4 space-y-0.5 text-sm text-sidebar-foreground/70">
             @foreach ($address as $line)

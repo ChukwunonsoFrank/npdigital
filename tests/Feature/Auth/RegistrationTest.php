@@ -14,7 +14,9 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
-    $response->assertStatus(200);
+    $response->assertOk()
+        ->assertSee('data-recaptcha-widget', false)
+        ->assertSee('https://www.google.com/recaptcha/api.js', false);
 });
 
 test('new users can register', function () {

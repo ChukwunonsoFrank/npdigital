@@ -35,7 +35,7 @@
             <!-- Hamburger Toggle BTN -->
 
             <a href="#" class="lg:hidden">
-                <img class="w-24" src="{{ asset('assets/img/logo.png') }}" alt="Logo" />
+                <img class="h-auto w-24" src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" />
             </a>
 
             <!-- Application nav menu button -->

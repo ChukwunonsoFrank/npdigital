@@ -9,7 +9,7 @@
     </div>
     <section @class(['auth-card w-full max-w-md rounded-2xl border-border bg-card shadow-xl', 'border p-5 sm:p-7' => $compact, 'auth-card-large space-y-6 border-2 p-8' => ! $compact])>
         <header @class(['text-center', 'mb-4' => $compact, 'space-y-2' => ! $compact])>
-            <img src="{{ asset('assets/np/logo-color.png') }}" alt="NP Digital" @class(['mx-auto w-auto object-contain', 'mb-1 h-12 sm:h-14' => $compact, 'h-14 sm:h-16' => ! $compact])>
+            <img src="{{ asset('assets/npdigital-logo.png') }}" alt="NP Digital" @class(['mx-auto h-auto object-contain', 'mb-1 w-[79px] sm:w-[92px]' => $compact, 'w-[92px] sm:w-[105px]' => ! $compact])>
             <h1 @class(['font-bold uppercase tracking-wide text-muted-foreground', 'text-xs' => $compact, 'text-sm' => ! $compact])>{{ $heading }}</h1>
         </header>
         {{ $slot }}

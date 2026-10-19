@@ -14,8 +14,8 @@
 
     <div class="inline-flex h-11 min-w-0 shrink-0 items-center justify-center bg-transparent sm:h-12" aria-label="NP Digital"
         role="img">
-        <img alt="NP Digital" class="block h-full w-auto max-w-full object-contain object-left"
-            src="{{ asset('assets/np/logo-color.png') }}">
+        <img alt="NP Digital" class="block h-auto w-[73px] max-w-full object-contain object-left sm:w-[79px]"
+            src="{{ asset('assets/npdigital-logo.png') }}">
     </div>
 
     @isset($actions)

@@ -9,6 +9,7 @@ it('shows the public marketing homepage with working account entry points', func
         ->assertSee('Content Strategy')
         ->assertSee('href="'.route('login').'"', false)
         ->assertSee('href="'.route('register').'"', false)
+        ->assertSee(asset('assets/npdigital-logo.png'))
         ->assertSee(asset('assets/np/home/creative-reel.webm'))
         ->assertSee('https://rsms.me/inter/inter.css')
         ->assertDontSee('Space Grotesk')

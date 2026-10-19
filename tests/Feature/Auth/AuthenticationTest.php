@@ -14,6 +14,8 @@ test('login screen can be rendered', function () {
 
     $response
         ->assertStatus(200)
+        ->assertSee('data-recaptcha-widget', false)
+        ->assertSee('https://www.google.com/recaptcha/api.js', false)
         ->assertSee(route('password.request', absolute: false))
         ->assertDontSee('href="'.route('password.request').'" class="text-muted"', false);
 });

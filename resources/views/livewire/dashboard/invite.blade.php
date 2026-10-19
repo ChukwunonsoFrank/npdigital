@@ -8,7 +8,7 @@
             <div class="section">
                 <div class="wallet-card p-5 mb-2">
                     <div class="flex items-center justify-center w-full h-48">
-                        <div><img src="{{ asset('assets/img/logo.png') }}" width="180" alt="logo"></div>
+                        <div><img src="{{ asset('assets/npdigital-logo.png') }}" width="180" alt="NP Digital"></div>
                     </div>
                 </div>
                 <div class="section mt-3 text-center" x-data="{ copied: false }">

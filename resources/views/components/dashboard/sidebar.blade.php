@@ -12,8 +12,8 @@
             <div class="flex items-center gap-2">
                 <div class="inline-flex h-12 min-w-0 shrink-0 items-center justify-start bg-transparent"
                     :class="collapsed ? 'md:w-auto' : 'md:w-full'" aria-label="NP Digital" role="img">
-                    <img alt="NP Digital" class="block h-full w-auto max-w-full object-contain object-left"
-                        :class="collapsed ? 'md:hidden' : ''" src="{{ asset('assets/np/logo-inverse.png') }}">
+                    <img alt="NP Digital" class="block h-auto w-[79px] max-w-full rounded bg-white px-2 py-1 object-contain object-left"
+                        :class="collapsed ? 'md:hidden' : ''" src="{{ asset('assets/npdigital-logo.png') }}">
                     <span
                         class="hidden h-9 w-9 items-center justify-center rounded-md bg-sidebar-accent text-xs font-bold text-sidebar-foreground"
                         :class="collapsed ? 'md:flex' : 'md:hidden'">NP</span>
