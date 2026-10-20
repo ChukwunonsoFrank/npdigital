@@ -104,7 +104,24 @@ it('lists saved wallets and merged transaction history', function () {
         ->assertSee('My ETH Wallet')
         ->assertSee('Deposit')
         ->assertSee('Withdrawal')
+        ->assertSee('Bitcoin (BTC)')
+        ->assertSee('USDT (TRC20)')
         ->assertDontSee('No transactions yet.');
+});
+
+it('preserves legacy transaction currency labels', function () {
+    $user = User::factory()->create();
+    Withdrawal::create([
+        'user_id' => $user->id,
+        'amount' => 5000,
+        'payment_method' => 'TRC 20',
+        'address' => 'legacy-address',
+        'status' => 'pending',
+    ]);
+
+    Livewire::actingAs($user)->test(Wallet::class)
+        ->assertSuccessful()
+        ->assertSee('TRC 20');
 });
 
 it('opens the edit modal with prefilled wallet details', function () {

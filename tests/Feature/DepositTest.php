@@ -23,7 +23,19 @@ it('renders the deposit crypto form', function () {
         ->assertSee('Select Cryptocurrency')
         ->assertSee('Amount (USD equivalent)')
         ->assertSee('Proof of Payment')
-        ->assertSee('Submit Deposit Request');
+        ->assertSee('Submit Deposit Request')
+        ->assertSeeInOrder([
+            '₿ Bitcoin (BTC)',
+            'Ξ Ethereum (ETH)',
+            '₮ USDT (TRC20)',
+            '₮ USDT (ERC20)',
+            '◆ BNB (BSC)',
+            '◎ Solana (SOL)',
+            '✕ XRP',
+            'Ð Dogecoin (DOGE)',
+            'Ł Litecoin (LTC)',
+            '◈ Tron (TRX)',
+        ]);
 });
 
 it('shows only the selected platform address and its network disclaimer', function () {

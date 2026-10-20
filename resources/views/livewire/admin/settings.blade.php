@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\PlatformSetting;
-use App\SupportedAssets;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -11,6 +10,19 @@ use Livewire\WithFileUploads;
 
 new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] class extends Component {
     use WithFileUploads;
+
+    private const CRYPTOCURRENCIES = [
+        'BTC' => 'Bitcoin (BTC)',
+        'ETH' => 'Ethereum (ETH)',
+        'USDT-TRC20' => 'USDT (TRC20)',
+        'USDT-ERC20' => 'USDT (ERC20)',
+        'BNB' => 'BNB (BSC)',
+        'SOL' => 'Solana (SOL)',
+        'XRP' => 'XRP',
+        'DOGE' => 'Dogecoin (DOGE)',
+        'LTC' => 'Litecoin (LTC)',
+        'TRX' => 'Tron (TRX)',
+    ];
 
     public $businessLicenseUpload;
 
@@ -83,7 +95,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
     public function editWalletAddresses(): void
     {
         $this->walletAddresses = array_replace(
-            array_fill_keys(SupportedAssets::codes(), ''),
+            array_fill_keys(array_keys(self::CRYPTOCURRENCIES), ''),
             PlatformSetting::current()->deposit_wallet_addresses ?? [],
         );
         $this->resetValidation();
@@ -92,10 +104,10 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
     public function saveWalletAddresses(): void
     {
-        $rules = ['walletAddresses' => ['required', 'array:'.implode(',', SupportedAssets::codes())]];
+        $rules = ['walletAddresses' => ['required', 'array:'.implode(',', array_keys(self::CRYPTOCURRENCIES))]];
         $attributes = [];
 
-        foreach (SupportedAssets::all() as $code => $label) {
+        foreach (self::CRYPTOCURRENCIES as $code => $label) {
             $rules['walletAddresses.'.$code] = ['required', 'string', 'max:255', 'not_regex:/\s/'];
             $attributes['walletAddresses.'.$code] = $label.' address';
         }
@@ -340,7 +352,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
         $settings = PlatformSetting::current();
 
         return [
-            'walletOptions' => SupportedAssets::all(),
+            'walletOptions' => self::CRYPTOCURRENCIES,
             'savedWalletAddresses' => $settings->deposit_wallet_addresses ?? [],
             'savedWhatsappNumber' => $settings->whatsapp_support_number,
             'savedTelegramUsername' => $settings->telegram_support_username,
@@ -481,7 +493,18 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                                 @foreach ($walletOptions as $code => $label)
                                     <div wire:key="deposit-wallet-{{ $code }}" class="space-y-1.5">
                                         <label for="deposit-wallet-{{ $code }}" class="flex items-center gap-2 text-xs font-medium">
-                                            <span class="text-base" aria-hidden="true">{{ SupportedAssets::symbol($code) }}</span>
+                                            <span class="text-base" aria-hidden="true">{{ match ($code) {
+                                                'BTC' => '₿',
+                                                'ETH' => 'Ξ',
+                                                'USDT-TRC20', 'USDT-ERC20' => '₮',
+                                                'BNB' => '◆',
+                                                'SOL' => '◎',
+                                                'XRP' => '✕',
+                                                'DOGE' => 'Ð',
+                                                'LTC' => 'Ł',
+                                                'TRX' => '◈',
+                                                default => $code,
+                                            } }}</span>
                                             {{ $label }}
                                         </label>
                                         @if ($editingWalletAddresses)

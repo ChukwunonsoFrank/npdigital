@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\Withdrawal;
 use App\Notifications\TransactionOccured;
 use App\Notifications\WithdrawalInitiated;
-use App\SupportedAssets;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Layout;
@@ -137,7 +136,18 @@ class Withdraw extends Component
         $user = auth()->user();
 
         return view('livewire.dashboard.withdraw', [
-            'cryptocurrencies' => SupportedAssets::all(),
+            'cryptocurrencies' => [
+                'BTC' => 'Bitcoin (BTC)',
+                'ETH' => 'Ethereum (ETH)',
+                'USDT-TRC20' => 'USDT (TRC20)',
+                'USDT-ERC20' => 'USDT (ERC20)',
+                'BNB' => 'BNB (BSC)',
+                'SOL' => 'Solana (SOL)',
+                'XRP' => 'XRP',
+                'DOGE' => 'Dogecoin (DOGE)',
+                'LTC' => 'Litecoin (LTC)',
+                'TRX' => 'Tron (TRX)',
+            ],
             'wallets' => $user->wallets()->latest()->get(),
             'availableBalance' => ((int) $user->balance) / 100,
         ]);

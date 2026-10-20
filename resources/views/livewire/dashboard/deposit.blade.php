@@ -18,7 +18,18 @@
                             class="h-10 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
                             <option value="">Choose a cryptocurrency</option>
                             @foreach ($cryptocurrencies as $code => $label)
-                                <option value="{{ $code }}">{{ \App\SupportedAssets::symbol($code) }} {{ $label }}</option>
+                                <option value="{{ $code }}">{{ match ($code) {
+                                    'BTC' => '₿',
+                                    'ETH' => 'Ξ',
+                                    'USDT-TRC20', 'USDT-ERC20' => '₮',
+                                    'BNB' => '◆',
+                                    'SOL' => '◎',
+                                    'XRP' => '✕',
+                                    'DOGE' => 'Ð',
+                                    'LTC' => 'Ł',
+                                    'TRX' => '◈',
+                                    default => $code,
+                                } }} {{ $label }}</option>
                             @endforeach
                         </select>
                         <x-dashboard.icon name="chevron-down"

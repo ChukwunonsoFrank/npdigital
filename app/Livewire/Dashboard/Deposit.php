@@ -3,7 +3,6 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\PlatformSetting;
-use App\SupportedAssets;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -14,6 +13,19 @@ class Deposit extends Component
 {
     use WithFileUploads;
 
+    private const CRYPTOCURRENCIES = [
+        'BTC' => 'Bitcoin (BTC)',
+        'ETH' => 'Ethereum (ETH)',
+        'USDT-TRC20' => 'USDT (TRC20)',
+        'USDT-ERC20' => 'USDT (ERC20)',
+        'BNB' => 'BNB (BSC)',
+        'SOL' => 'Solana (SOL)',
+        'XRP' => 'XRP',
+        'DOGE' => 'Dogecoin (DOGE)',
+        'LTC' => 'Litecoin (LTC)',
+        'TRX' => 'Tron (TRX)',
+    ];
+
     public string $cryptocurrency = '';
 
     public $amount = '';
@@ -23,7 +35,7 @@ class Deposit extends Component
     public function submitDeposit(): void
     {
         $this->validate([
-            'cryptocurrency' => ['required', 'string', Rule::in(SupportedAssets::codes())],
+            'cryptocurrency' => ['required', 'string', Rule::in(array_keys(self::CRYPTOCURRENCIES))],
             'amount' => ['required', 'numeric', 'min:1'],
             'screenshot' => ['required', 'image', 'mimes:png,jpg,jpeg', 'max:5120'],
         ]);
@@ -46,7 +58,7 @@ class Deposit extends Component
     public function render()
     {
         return view('livewire.dashboard.deposit', [
-            'cryptocurrencies' => SupportedAssets::all(),
+            'cryptocurrencies' => self::CRYPTOCURRENCIES,
             'depositAddress' => PlatformSetting::current()->deposit_wallet_addresses[$this->cryptocurrency] ?? null,
         ]);
     }

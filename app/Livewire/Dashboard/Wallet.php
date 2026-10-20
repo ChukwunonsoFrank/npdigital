@@ -5,7 +5,6 @@ namespace App\Livewire\Dashboard;
 use App\Models\Deposit;
 use App\Models\Wallet as WalletModel;
 use App\Models\Withdrawal;
-use App\SupportedAssets;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -14,6 +13,19 @@ use Livewire\Component;
 #[Layout('components.layouts.dashboard')]
 class Wallet extends Component
 {
+    private const CRYPTOCURRENCIES = [
+        'BTC' => 'Bitcoin (BTC)',
+        'ETH' => 'Ethereum (ETH)',
+        'USDT-TRC20' => 'USDT (TRC20)',
+        'USDT-ERC20' => 'USDT (ERC20)',
+        'BNB' => 'BNB (BSC)',
+        'SOL' => 'Solana (SOL)',
+        'XRP' => 'XRP',
+        'DOGE' => 'Dogecoin (DOGE)',
+        'LTC' => 'Litecoin (LTC)',
+        'TRX' => 'Tron (TRX)',
+    ];
+
     public bool $showWalletModal = false;
 
     public ?int $editingWalletId = null;
@@ -115,7 +127,7 @@ class Wallet extends Component
     {
         $this->validate([
             'wallet_label' => ['required', 'string', 'max:255'],
-            'wallet_cryptocurrency' => ['required', 'string', Rule::in(SupportedAssets::codes())],
+            'wallet_cryptocurrency' => ['required', 'string', Rule::in(array_keys(self::CRYPTOCURRENCIES))],
             'wallet_address' => ['required', 'string', 'max:255'],
         ]);
     }
@@ -155,7 +167,7 @@ class Wallet extends Component
             'onHoldBalance' => ((int) $user->processing_amount) / 100,
             'wallets' => $user->wallets()->latest()->get(),
             'transactions' => $this->transactions(),
-            'cryptocurrencies' => SupportedAssets::all(),
+            'cryptocurrencies' => self::CRYPTOCURRENCIES,
         ]);
     }
 }
