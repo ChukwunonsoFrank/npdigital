@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\CryptoAssets;
 use App\Models\Deposit;
 use App\Models\Wallet as WalletModel;
 use App\Models\Withdrawal;
-use App\Support\Cryptocurrencies;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -115,7 +115,7 @@ class Wallet extends Component
     {
         $this->validate([
             'wallet_label' => ['required', 'string', 'max:255'],
-            'wallet_cryptocurrency' => ['required', 'string', Rule::in(Cryptocurrencies::codes())],
+            'wallet_cryptocurrency' => ['required', 'string', Rule::in(CryptoAssets::codes())],
             'wallet_address' => ['required', 'string', 'max:255'],
         ]);
     }
@@ -155,7 +155,7 @@ class Wallet extends Component
             'onHoldBalance' => ((int) $user->processing_amount) / 100,
             'wallets' => $user->wallets()->latest()->get(),
             'transactions' => $this->transactions(),
-            'cryptocurrencies' => Cryptocurrencies::all(),
+            'cryptocurrencies' => CryptoAssets::all(),
         ]);
     }
 }

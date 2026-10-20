@@ -1,7 +1,7 @@
 <?php
 
+use App\CryptoAssets;
 use App\Models\PlatformSetting;
-use App\Support\Cryptocurrencies;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -83,7 +83,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
     public function editWalletAddresses(): void
     {
         $this->walletAddresses = array_replace(
-            array_fill_keys(Cryptocurrencies::codes(), ''),
+            array_fill_keys(CryptoAssets::codes(), ''),
             PlatformSetting::current()->deposit_wallet_addresses ?? [],
         );
         $this->resetValidation();
@@ -92,10 +92,10 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
     public function saveWalletAddresses(): void
     {
-        $rules = ['walletAddresses' => ['required', 'array:'.implode(',', Cryptocurrencies::codes())]];
+        $rules = ['walletAddresses' => ['required', 'array:'.implode(',', CryptoAssets::codes())]];
         $attributes = [];
 
-        foreach (Cryptocurrencies::all() as $code => $label) {
+        foreach (CryptoAssets::all() as $code => $label) {
             $rules['walletAddresses.'.$code] = ['required', 'string', 'max:255', 'not_regex:/\s/'];
             $attributes['walletAddresses.'.$code] = $label.' address';
         }
@@ -340,7 +340,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
         $settings = PlatformSetting::current();
 
         return [
-            'walletOptions' => Cryptocurrencies::all(),
+            'walletOptions' => CryptoAssets::all(),
             'savedWalletAddresses' => $settings->deposit_wallet_addresses ?? [],
             'savedWhatsappNumber' => $settings->whatsapp_support_number,
             'savedTelegramUsername' => $settings->telegram_support_username,
@@ -481,7 +481,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                                 @foreach ($walletOptions as $code => $label)
                                     <div wire:key="deposit-wallet-{{ $code }}" class="space-y-1.5">
                                         <label for="deposit-wallet-{{ $code }}" class="flex items-center gap-2 text-xs font-medium">
-                                            <span class="text-base" aria-hidden="true">{{ Cryptocurrencies::symbol($code) }}</span>
+                                            <span class="text-base" aria-hidden="true">{{ CryptoAssets::symbol($code) }}</span>
                                             {{ $label }}
                                         </label>
                                         @if ($editingWalletAddresses)
