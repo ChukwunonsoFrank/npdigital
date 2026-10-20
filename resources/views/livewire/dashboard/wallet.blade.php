@@ -136,7 +136,7 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-bold text-foreground">{{ $transaction['type'] }}</p>
                                 <p class="truncate text-[11px] text-muted-foreground">
-                                    {{ \App\CryptoAssets::label($transaction['cryptocurrency']) }}
+                                    {{ \App\SupportedAssets::label($transaction['cryptocurrency']) }}
                                     &middot; {{ $transaction['date']?->format('M d, Y h:i A') }}
                                 </p>
                             </div>

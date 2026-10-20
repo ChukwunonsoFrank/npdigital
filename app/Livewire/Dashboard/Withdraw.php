@@ -2,11 +2,11 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\CryptoAssets;
 use App\Models\User;
 use App\Models\Withdrawal;
 use App\Notifications\TransactionOccured;
 use App\Notifications\WithdrawalInitiated;
+use App\SupportedAssets;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Layout;
@@ -137,7 +137,7 @@ class Withdraw extends Component
         $user = auth()->user();
 
         return view('livewire.dashboard.withdraw', [
-            'cryptocurrencies' => CryptoAssets::all(),
+            'cryptocurrencies' => SupportedAssets::all(),
             'wallets' => $user->wallets()->latest()->get(),
             'availableBalance' => ((int) $user->balance) / 100,
         ]);
