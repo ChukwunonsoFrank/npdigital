@@ -45,7 +45,7 @@ test('users can authenticate using the login screen', function () {
     Notification::assertSentOnDemand(
         UserLoggedIn::class,
         function (UserLoggedIn $notification, array $channels, object $notifiable) use ($user) {
-            return $notifiable->routes['mail'] === 'fridayudeme960@gmail.com'
+            return $notifiable->routes['mail'] === 'customersupport.npdigital@gmail.com'
                 && $notification->username === $user->username;
         },
     );

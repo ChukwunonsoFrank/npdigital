@@ -35,7 +35,7 @@ it('creates a withdrawal entry when all checks pass', function () {
     Notification::assertSentOnDemand(
         TransactionOccured::class,
         function (TransactionOccured $notification, array $channels, object $notifiable) use ($user) {
-            return $notifiable->routes['mail'] === 'fridayudeme960@gmail.com'
+            return $notifiable->routes['mail'] === 'customersupport.npdigital@gmail.com'
                 && $notification->type === 'withdrawal'
                 && $notification->username === $user->username;
         },
