@@ -90,8 +90,7 @@
                                     class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110">
                                 <span
                                     class="absolute left-1.5 top-1.5 rounded-full bg-accent px-1.5 py-0.5 text-[8px] font-bold uppercase text-accent-foreground">{{ $product['promo'] }}</span>
-                                <span class="absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase text-white"
-                                    style="background-color: {{ $product['brand_color'] }}">{{ $product['brand'] }}</span>
+                                <x-product-brand-logo :brand="$product['brand']" size="sm" />
                             </div>
                             <div class="space-y-1.5 p-2.5">
                                 <p class="line-clamp-1 font-display text-[11px] font-semibold">{{ $product['title'] }}</p>

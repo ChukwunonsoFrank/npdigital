@@ -202,6 +202,7 @@ class AdminTasks extends Component
                         'commission_percentage' => $this->premiumCommission,
                         'available_after_tasks' => $user->tasks_completed + $this->premiumPosition - 1,
                         'task_image_path' => $product['image'] ?? '',
+                        'brand' => $product['brand'],
                         'rating' => '0',
                         'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
                         'status' => 'queued',

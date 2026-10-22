@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ProductBrand;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -27,15 +28,25 @@ class WarehouseExclusiveProduct extends Model
         'level',
         'name',
         'image_url',
+        'brand',
         'price',
         'name2',
         'image_url2',
+        'brand2',
         'price2',
         'commission',
         'description',
         'is_custom',
         'is_deleted',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $product): void {
+            $product->brand ??= ProductBrand::random();
+            $product->brand2 ??= ProductBrand::random();
+        });
+    }
 
     /**
      * Get the attributes that should be cast.

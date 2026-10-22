@@ -41,8 +41,11 @@
             <button type="button" wire:key="pending-{{ $task->id }}" wire:click="openSubmission({{ $task->id }})"
                 class="block w-full rounded-lg border border-amber-300 bg-amber-50 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-100">
                 <div class="flex items-start gap-3">
-                    <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" alt="{{ $task->title }}"
-                        class="h-16 w-16 shrink-0 rounded-lg object-cover">
+                    <div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                        <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}"
+                            alt="{{ $task->title }}" class="h-full w-full object-cover">
+                        <x-product-brand-logo :brand="$task->brand" size="sm" />
+                    </div>
                     <div class="min-w-0">
                         <p class="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-600">
                             <x-dashboard.icon name="clock" class="h-3.5 w-3.5" />
@@ -70,8 +73,11 @@
                         @foreach ($submittedTasks as $task)
                             <div wire:key="submitted-{{ $task->id }}"
                                 class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                                <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" alt="{{ $task->title }}"
-                                    class="h-12 w-12 shrink-0 rounded-lg object-cover">
+                                <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+                                    <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}"
+                                        alt="{{ $task->title }}" class="h-full w-full object-cover">
+                                    <x-product-brand-logo :brand="$task->brand" size="sm" />
+                                </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-semibold text-foreground">{{ $task->title }}</p>
                                     <p class="text-xs text-muted-foreground">Cost:

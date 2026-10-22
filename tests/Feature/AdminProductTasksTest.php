@@ -165,6 +165,7 @@ it('opens the task account summary and reuses the premium task flow for either a
     expect($task->title)->toBe('Gold Premium')
         ->and($task->cost)->toBe('43.20')
         ->and((float) $task->commission_percentage)->toBe(7.5)
+        ->and($task->brand)->toBe($product->brand)
         ->and($task->status)->toBe('queued');
 
     $component->call('openAddExclusive')->call('closeAddExclusive')
@@ -206,7 +207,8 @@ it('assigns a customized premium combo to multiple accounts through all three st
         $task = $user->tasks()->sole();
         expect($task->title)->toBe('Tea Sampler + Kitchen Set')->and($task->cost)->toBe('61.00')
             ->and((float) $task->commission_percentage)->toBe(7.5)
-            ->and((int) $task->available_after_tasks)->toBe($user->tasks_completed + 2);
+            ->and((int) $task->available_after_tasks)->toBe($user->tasks_completed + 2)
+            ->and($task->brand)->toBe($premium->brand);
     }
 
     $component->call('openAssignment')->assertSet('assignmentUserIds', [])->assertSet('addPremium', false)->assertSet('assignmentStep', 1);

@@ -18,6 +18,7 @@ class MembershipLevelSeeder extends Seeder
             ['name' => 'Gold', 'percentage' => '1.00', 'minimum_balance' => '999.00'],
             ['name' => 'Platinum', 'percentage' => '1.25', 'minimum_balance' => '3999.00'],
             ['name' => 'Diamond', 'percentage' => '1.50', 'minimum_balance' => '7999.00'],
+            ['name' => 'VVIP', 'percentage' => '2.00', 'minimum_balance' => '15999.00'],
         ];
 
         foreach ($levels as $level) {

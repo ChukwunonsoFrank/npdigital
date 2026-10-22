@@ -411,6 +411,123 @@ it('cancels the upgrade membership modal without changing the level', function (
     expect($user->fresh()->membership_level)->toBe('Normal');
 });
 
+it('opens the downgrade membership modal with only lower levels offered', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'name' => 'Daniella Dom',
+        'membership_level' => 'Gold',
+    ]);
+    foreach (['Normal' => 0.50, 'Silver' => 0.75, 'Gold' => 1.00, 'Diamond' => 1.50] as $name => $percentage) {
+        MembershipLevel::create(['name' => $name, 'percentage' => $percentage]);
+    }
+
+    $component = Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->assertSee('wire:click="openDowngradeMembership"', false)
+        ->call('openDowngradeMembership')
+        ->assertSet('showDowngradeMembership', true)
+        ->assertSet('selectedUserId', $user->id)
+        ->assertSet('downgradeMembershipLevel', 'Silver')
+        ->assertSee('Downgrade Membership')
+        ->assertSee('Daniella Dom — Current:')
+        ->assertSee('New Membership Level');
+
+    $document = new DOMDocument;
+    @$document->loadHTML($component->html());
+    $options = (new DOMXPath($document))->query('//select[@id="downgrade-membership-level"]/option');
+
+    expect(array_map(fn ($option) => $option->getAttribute('value'), iterator_to_array($options)))
+        ->toBe(['Silver', 'Normal']);
+});
+
+it('downgrades the selected user membership level', function (bool $taskSummary) {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'membership_level' => 'Gold',
+        'required_upgrade_level' => 'Diamond',
+    ]);
+    foreach (['Normal' => 0.50, 'Silver' => 0.75, 'Gold' => 1.00, 'Diamond' => 1.50] as $name => $percentage) {
+        MembershipLevel::create(['name' => $name, 'percentage' => $percentage]);
+    }
+
+    Livewire::actingAs($admin)
+        ->test(Users::class, ['taskSummary' => $taskSummary])
+        ->call('showUserDetails', $user->id)
+        ->call('openDowngradeMembership')
+        ->set('downgradeMembershipLevel', 'Silver')
+        ->call('applyDowngradeMembership')
+        ->assertHasNoErrors()
+        ->assertSet('showDowngradeMembership', false)
+        ->assertSet('downgradeMembershipLevel', '')
+        ->assertSet('selectedUserId', $user->id)
+        ->assertDispatched('task-user-updated')
+        ->assertDispatched('toast', message: 'Membership level updated successfully.');
+
+    $user->refresh();
+
+    expect($user->membership_level)->toBe('Silver')
+        ->and($user->required_upgrade_level)->toBe('Diamond');
+})->with([false, true]);
+
+it('offers no downgrade levels for a user on the entry level', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['membership_level' => 'Normal']);
+    MembershipLevel::create(['name' => 'Normal', 'percentage' => '0.50']);
+    MembershipLevel::create(['name' => 'Silver', 'percentage' => '0.75']);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openDowngradeMembership')
+        ->assertSet('showDowngradeMembership', true)
+        ->assertSet('downgradeMembershipLevel', '')
+        ->assertSee('already on the lowest membership level')
+        ->assertDontSee('id="downgrade-membership-level"', false);
+});
+
+it('rejects current, higher, and unknown downgrade levels', function (string $targetLevel) {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['membership_level' => 'Silver']);
+    MembershipLevel::create(['name' => 'Normal', 'percentage' => '0.50']);
+    MembershipLevel::create(['name' => 'Silver', 'percentage' => '0.75']);
+    MembershipLevel::create(['name' => 'Gold', 'percentage' => '1.00']);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openDowngradeMembership')
+        ->set('downgradeMembershipLevel', '')
+        ->call('applyDowngradeMembership')
+        ->assertHasErrors(['downgradeMembershipLevel' => 'required'])
+        ->assertSet('showDowngradeMembership', true)
+        ->set('downgradeMembershipLevel', $targetLevel)
+        ->call('applyDowngradeMembership')
+        ->assertHasErrors(['downgradeMembershipLevel' => 'in'])
+        ->assertSet('showDowngradeMembership', true);
+
+    expect($user->fresh()->membership_level)->toBe('Silver');
+})->with(['Silver', 'Gold', 'Nonexistent']);
+
+it('cancels the downgrade membership modal without changing the level', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['membership_level' => 'Gold']);
+    MembershipLevel::create(['name' => 'Normal', 'percentage' => '0.50']);
+    MembershipLevel::create(['name' => 'Gold', 'percentage' => '1.00']);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openDowngradeMembership')
+        ->set('downgradeMembershipLevel', 'Normal')
+        ->call('closeDowngradeMembership')
+        ->assertSet('showDowngradeMembership', false)
+        ->assertSet('downgradeMembershipLevel', '')
+        ->assertSet('selectedUserId', $user->id);
+
+    expect($user->fresh()->membership_level)->toBe('Gold');
+});
+
 it('clears the selected user submission record and on-hold balance', function (bool $taskSummary) {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
@@ -996,7 +1113,8 @@ it('runs an assigned exclusive once immediately after the current task and credi
         ->set('exclusivePrice', '43.20')->set('exclusiveCommission', '7.5')
         ->call('assignExclusive')->assertHasNoErrors();
     $exclusive = CompletedTask::query()->where('status', 'queued')->sole();
-    expect($current->fresh()->status)->toBe('pending');
+    expect($exclusive->brand)->toBe($product->brand)
+        ->and($current->fresh()->status)->toBe('pending');
 
     Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Record::class)
         ->assertDontSee('Exclusive Product')->call('openSubmission', $exclusive->id)->assertSet('showTaskModal', false);

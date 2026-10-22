@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MembershipLevel;
 use App\Models\PlatformSetting;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
@@ -65,6 +66,14 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
     /** @var array<string, list<string>> */
     public array $membershipPerkDraft = [];
+
+    #[Locked]
+    public bool $showMembershipLevelModal = false;
+
+    public string $membershipLevelName = '';
+
+    /** @var list<string> */
+    public array $membershipLevelPerkDraft = [];
 
     public function boot(): void
     {
@@ -258,7 +267,11 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
     public function editMembershipPerks(): void
     {
-        $this->membershipPerkDraft = PlatformSetting::current()->membershipPerks();
+        $savedPerks = PlatformSetting::current()->membershipPerks();
+
+        $this->membershipPerkDraft = collect($this->membershipLevelNames())
+            ->mapWithKeys(fn (string $level): array => [$level => $savedPerks[$level] ?? []])
+            ->all();
         $this->resetValidation();
         $this->editingMembershipPerks = true;
     }
@@ -287,8 +300,10 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
     public function saveMembershipPerks(): void
     {
-        $rules = ['membershipPerkDraft' => ['required', 'array:Normal,Silver,Gold,Platinum,Diamond', 'size:5']];
-        foreach (['Normal', 'Silver', 'Gold', 'Platinum', 'Diamond'] as $level) {
+        $levels = array_keys($this->membershipPerkDraft);
+        $rules = ['membershipPerkDraft' => ['required', 'array', 'min:1']];
+
+        foreach ($levels as $level) {
             $rules['membershipPerkDraft.'.$level] = ['present', 'array', 'list', 'max:30'];
             $rules['membershipPerkDraft.'.$level.'.*'] = ['required', 'string', 'max:1000'];
         }
@@ -301,6 +316,84 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
         PlatformSetting::query()->updateOrCreate(['id' => 1], ['membership_perks' => $validated['membershipPerkDraft']]);
         $this->editingMembershipPerks = false;
         $this->dispatch('notify', message: 'Membership levels saved.', type: 'success');
+    }
+
+    public function openMembershipLevelModal(): void
+    {
+        $this->membershipLevelName = '';
+        $this->membershipLevelPerkDraft = [''];
+        $this->resetValidation();
+        $this->showMembershipLevelModal = true;
+    }
+
+    public function closeMembershipLevelModal(): void
+    {
+        $this->reset('showMembershipLevelModal', 'membershipLevelName', 'membershipLevelPerkDraft');
+        $this->resetValidation();
+    }
+
+    public function addMembershipLevelPerk(): void
+    {
+        if ($this->showMembershipLevelModal) {
+            $this->membershipLevelPerkDraft[] = '';
+        }
+    }
+
+    public function removeMembershipLevelPerk(int $index): void
+    {
+        if ($this->showMembershipLevelModal) {
+            unset($this->membershipLevelPerkDraft[$index]);
+            $this->membershipLevelPerkDraft = array_values($this->membershipLevelPerkDraft);
+            $this->resetValidation();
+        }
+    }
+
+    public function saveMembershipLevel(): void
+    {
+        $this->validate([
+            'membershipLevelName' => ['required', 'string', 'max:50', 'not_regex:/[.,]/'],
+            'membershipLevelPerkDraft' => ['present', 'array', 'list', 'max:30'],
+            'membershipLevelPerkDraft.*' => ['required', 'string', 'max:1000'],
+        ], [
+            'membershipLevelName.not_regex' => 'Level names may not contain periods or commas.',
+            'membershipLevelPerkDraft.*.required' => 'Enter a perk or remove the empty row.',
+            'membershipLevelPerkDraft.*.max' => 'Each perk may contain up to 1,000 characters.',
+        ]);
+
+        $name = trim($this->membershipLevelName);
+
+        if ($name === '') {
+            $this->addError('membershipLevelName', 'Enter a level name.');
+
+            return;
+        }
+
+        $exists = MembershipLevel::query()->get()->contains(
+            fn (MembershipLevel $level): bool => strtolower($level->name) === strtolower($name),
+        );
+
+        if ($exists) {
+            $this->addError('membershipLevelName', 'The level name has already been taken.');
+
+            return;
+        }
+
+        MembershipLevel::query()->create([
+            'name' => $name,
+            'percentage' => '0.00',
+            'minimum_balance' => '0.00',
+        ]);
+
+        $perks = PlatformSetting::current()->membershipPerks();
+        $perks[$name] = array_values($this->membershipLevelPerkDraft);
+        PlatformSetting::query()->updateOrCreate(['id' => 1], ['membership_perks' => $perks]);
+
+        if ($this->editingMembershipPerks) {
+            $this->membershipPerkDraft[$name] = $perks[$name];
+        }
+
+        $this->closeMembershipLevelModal();
+        $this->dispatch('notify', message: 'Membership level created.', type: 'success');
     }
 
     public function updatedBusinessLicenseUpload(): void
@@ -346,6 +439,22 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
         $this->dispatch('notify', message: 'Business license removed.', type: 'success');
     }
 
+    /**
+     * Membership levels shown in the editor, including levels created from the dashboard.
+     *
+     * @return list<string>
+     */
+    private function membershipLevelNames(): array
+    {
+        $names = MembershipLevel::query()->orderBy('id')->pluck('name')->all();
+
+        if ($names === []) {
+            $names = array_keys(PlatformSetting::current()->membershipPerks());
+        }
+
+        return array_values($names);
+    }
+
     /** @return array<string, mixed> */
     public function with(): array
     {
@@ -359,6 +468,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
             'checkInProgram' => $settings->checkInProgram(),
             'membershipChart' => $settings->membershipChart(),
             'membershipPerks' => $settings->membershipPerks(),
+            'membershipLevelNames' => $this->membershipLevelNames(),
             'businessLicenses' => $settings->business_licenses ?? [],
         ];
     }
@@ -697,6 +807,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                                     </h3>
                                     <form id="membership-perks-editor" x-show="levelsOpen" x-cloak wire:submit="saveMembershipPerks" class="space-y-3 pb-4">
                                         <div class="flex justify-end gap-2">
+                                            <flux:button type="button" size="sm" wire:click="openMembershipLevelModal" class="rounded-md! border-transparent! bg-blue-600! text-white! shadow-none! hover:bg-blue-700!"><span class="inline-flex items-center gap-2"><x-dashboard.icon name="plus" class="h-4 w-4" />Add Level</span></flux:button>
                                             @if ($editingMembershipPerks)
                                                 <flux:button type="button" size="sm" wire:click="cancelMembershipPerks" class="rounded-md! border-input! bg-background! shadow-none!"><span class="inline-flex items-center gap-2"><x-dashboard.icon name="x" class="h-4 w-4" />Cancel</span></flux:button>
                                                 <flux:button type="submit" variant="primary" size="sm" wire:loading.attr="disabled" wire:target="saveMembershipPerks" class="rounded-md! bg-primary! text-primary-foreground! hover:bg-primary/90!"><span class="inline-flex items-center gap-2"><x-dashboard.icon name="save" class="h-4 w-4" />Save</span></flux:button>
@@ -708,14 +819,19 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                                             <p role="alert" class="text-sm text-destructive">{{ $message }}</p>
                                         @enderror
                                         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            @foreach (['Normal' => 'bg-gray-500', 'Silver' => 'bg-gray-400', 'Gold' => 'bg-amber-500', 'Platinum' => 'bg-slate-400', 'Diamond' => 'bg-sky-500'] as $level => $color)
+                                            @php
+                                                $levelColors = ['Normal' => 'bg-gray-500', 'Silver' => 'bg-gray-400', 'Gold' => 'bg-amber-500', 'Platinum' => 'bg-slate-400', 'Diamond' => 'bg-sky-500'];
+                                                $fallbackLevelColors = ['bg-violet-500', 'bg-rose-500', 'bg-emerald-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-orange-400'];
+                                            @endphp
+                                            @foreach ($membershipLevelNames as $level)
+                                                @php($color = $levelColors[$level] ?? $fallbackLevelColors[$loop->index % count($fallbackLevelColors)])
                                                 <div wire:key="membership-perks-{{ $level }}" class="min-w-0 space-y-3 rounded-xl border border-border p-4">
                                                     <h4 class="flex items-center gap-2 text-sm font-bold"><span aria-hidden="true" class="h-3 w-3 shrink-0 rounded-full {{ $color }}"></span>{{ $level }}</h4>
                                                     @if ($editingMembershipPerks)
                                                         @error('membershipPerkDraft.'.$level)
                                                             <p role="alert" class="text-sm text-destructive">{{ $message }}</p>
                                                         @enderror
-                                                        @foreach ($membershipPerkDraft[$level] as $index => $perk)
+                                                        @foreach ($membershipPerkDraft[$level] ?? [] as $index => $perk)
                                                             <div wire:key="perk-draft-{{ $level }}-{{ $index }}" class="space-y-1">
                                                                 <div class="flex items-center gap-2">
                                                                     <flux:input aria-label="{{ $level }} perk {{ $index + 1 }}" wire:model="membershipPerkDraft.{{ $level }}.{{ $index }}" class="min-w-0 flex-1" class:input="rounded-md! border-input! bg-background! text-muted-foreground! shadow-none!" />
@@ -726,11 +842,15 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                                                         @endforeach
                                                         <flux:button type="button" variant="ghost" size="sm" wire:click="addMembershipPerk('{{ $level }}')" aria-label="Add {{ $level }} perk" class="w-full"><span class="inline-flex items-center gap-2"><x-dashboard.icon name="plus" class="h-4 w-4" />Add Perk</span></flux:button>
                                                     @else
-                                                        <ul class="space-y-1.5 text-xs text-muted-foreground">
-                                                            @foreach ($membershipPerks[$level] as $perk)
-                                                                <li wire:key="perk-saved-{{ $level }}-{{ $loop->index }}" class="flex items-start gap-1.5"><span class="shrink-0 text-primary">&bull;</span><span class="min-w-0 break-words">{{ $perk }}</span></li>
-                                                            @endforeach
-                                                        </ul>
+                                                        @if (count($membershipPerks[$level] ?? []) > 0)
+                                                            <ul class="space-y-1.5 text-xs text-muted-foreground">
+                                                                @foreach ($membershipPerks[$level] as $perk)
+                                                                    <li wire:key="perk-saved-{{ $level }}-{{ $loop->index }}" class="flex items-start gap-1.5"><span class="shrink-0 text-primary">&bull;</span><span class="min-w-0 break-words">{{ $perk }}</span></li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @else
+                                                            <p class="text-xs text-muted-foreground">No perks yet.</p>
+                                                        @endif
                                                     @endif
                                                 </div>
                                             @endforeach
@@ -744,4 +864,43 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
             </div>
         @endforeach
     </div>
+
+    @if ($showMembershipLevelModal)
+        @teleport('body')
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" x-data x-trap.inert.noscroll="true" @keydown.escape.window="$wire.closeMembershipLevelModal()">
+            <div class="absolute inset-0" wire:click="closeMembershipLevelModal"></div>
+            <section role="dialog" aria-modal="true" aria-labelledby="membership-level-modal-title" class="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6 shadow-lg">
+                <button type="button" wire:click="closeMembershipLevelModal" aria-label="Close dialog" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><x-dashboard.icon name="x" class="h-4 w-4" /></button>
+                <h2 id="membership-level-modal-title" class="pr-6 text-lg font-semibold leading-none tracking-tight">Add Membership Level</h2>
+                <p class="mt-2 text-sm text-muted-foreground">Create a level and add the perks shown on the activities page.</p>
+                <form wire:submit="saveMembershipLevel" class="mt-4 space-y-4">
+                    <div class="space-y-1.5">
+                        <label for="membership-level-name" class="text-sm font-medium">Level Name</label>
+                        <flux:input id="membership-level-name" wire:model="membershipLevelName" placeholder="e.g. VVIP" maxlength="50" autofocus class:input="rounded-md! border-input! bg-background! text-foreground! shadow-none!" />
+                        <flux:error name="membershipLevelName" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="text-sm font-medium">Perks</p>
+                        @foreach ($membershipLevelPerkDraft as $index => $perk)
+                            <div wire:key="new-level-perk-{{ $index }}" class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <flux:input aria-label="Perk {{ $index + 1 }}" wire:model="membershipLevelPerkDraft.{{ $index }}" placeholder="Perk description" class="min-w-0 flex-1" class:input="rounded-md! border-input! bg-background! text-muted-foreground! shadow-none!" />
+                                    <button type="button" wire:click="removeMembershipLevelPerk({{ $index }})" aria-label="Remove perk {{ $index + 1 }}" class="shrink-0 rounded-md p-1.5 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><x-dashboard.icon name="trash-2" class="h-4 w-4" /></button>
+                                </div>
+                                <flux:error name="membershipLevelPerkDraft.{{ $index }}" />
+                            </div>
+                        @endforeach
+                        <flux:button type="button" variant="ghost" size="sm" wire:click="addMembershipLevelPerk" class="w-full"><span class="inline-flex items-center gap-2"><x-dashboard.icon name="plus" class="h-4 w-4" />Add Perk</span></flux:button>
+                    </div>
+
+                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" wire:click="closeMembershipLevelModal" class="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">Cancel</button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="saveMembershipLevel" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"><x-dashboard.icon name="plus" class="mr-1 h-4 w-4" /><span wire:loading.remove wire:target="saveMembershipLevel">Create Level</span><span wire:loading wire:target="saveMembershipLevel">Creating...</span></button>
+                    </div>
+                </form>
+            </section>
+        </div>
+        @endteleport
+    @endif
 </div>

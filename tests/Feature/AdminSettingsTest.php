@@ -392,6 +392,101 @@ it('denies membership perk changes after administrator access is revoked', funct
     ['cancelMembershipPerks', []],
 ]);
 
+it('creates a membership level with perks and empty warehouse groups', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false]);
+    $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
+    PlatformSetting::factory()->create(['telegram_support_username' => 'support_bot']);
+
+    Volt::actingAs($admin)->test('admin.settings')
+        ->call('openMembershipLevelModal')
+        ->assertSet('showMembershipLevelModal', true)
+        ->assertSet('membershipLevelPerkDraft', [''])
+        ->set('membershipLevelName', 'VVIP Elite')
+        ->set('membershipLevelPerkDraft.0', 'Priority support')
+        ->call('addMembershipLevelPerk')
+        ->set('membershipLevelPerkDraft.1', 'Dedicated account manager')
+        ->call('saveMembershipLevel')
+        ->assertHasNoErrors()
+        ->assertSet('showMembershipLevelModal', false)
+        ->assertDispatched('notify', message: 'Membership level created.', type: 'success')
+        ->assertSee('VVIP Elite');
+
+    expect(\App\Models\MembershipLevel::query()->where('name', 'VVIP Elite')->value('percentage'))->toBe('0.00')
+        ->and(PlatformSetting::current()->membershipPerks()['VVIP Elite'])->toBe(['Priority support', 'Dedicated account manager']);
+
+    \Livewire\Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Activities::class)
+        ->assertSee('VVIP Elite')->assertSee('Priority support')->assertSee('Dedicated account manager');
+
+    \Livewire\Livewire::actingAs($admin)->test(\App\Livewire\Admin\Warehouse::class)
+        ->call('selectLevel', 'vvip-elite')
+        ->assertSet('level', 'vvip-elite')
+        ->assertSee('VVIP Elite')
+        ->assertSee('0 products')
+        ->call('toggleDay', 1)
+        ->call('toggleGroup', 'a')
+        ->assertSee('0 items')
+        ->call('openAddProduct')
+        ->assertSet('productCommission', '0')
+        ->set('productName', 'Elite Product')
+        ->set('productPrice', '100')
+        ->call('saveProduct')
+        ->assertHasNoErrors()
+        ->assertSee('1 items');
+});
+
+it('keeps a newly created level when membership perks are already being edited', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
+    PlatformSetting::factory()->create(['telegram_support_username' => 'support_bot']);
+
+    $component = Volt::actingAs($admin)->test('admin.settings')->call('editMembershipPerks');
+
+    $component->call('openMembershipLevelModal')
+        ->set('membershipLevelName', 'VVIP Elite')
+        ->set('membershipLevelPerkDraft.0', 'Priority support')
+        ->call('saveMembershipLevel')
+        ->assertHasNoErrors()
+        ->assertSet('editingMembershipPerks', true)
+        ->assertSet('membershipPerkDraft.VVIP Elite', ['Priority support'])
+        ->call('saveMembershipPerks')
+        ->assertHasNoErrors();
+
+    expect(PlatformSetting::current()->membershipPerks()['VVIP Elite'])->toBe(['Priority support']);
+});
+
+it('rejects duplicate membership level names case-insensitively', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    \App\Models\MembershipLevel::query()->create([
+        'name' => 'VVIP',
+        'percentage' => '2.00',
+        'minimum_balance' => '15999.00',
+    ]);
+
+    Volt::actingAs($admin)->test('admin.settings')
+        ->call('openMembershipLevelModal')
+        ->set('membershipLevelName', 'vvip')
+        ->set('membershipLevelPerkDraft.0', 'Priority support')
+        ->call('saveMembershipLevel')
+        ->assertHasErrors(['membershipLevelName'])
+        ->assertSet('showMembershipLevelModal', true);
+
+    expect(\App\Models\MembershipLevel::query()->count())->toBe(1);
+});
+
+it('rejects membership levels with empty perks', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Volt::actingAs($admin)->test('admin.settings')
+        ->call('openMembershipLevelModal')
+        ->set('membershipLevelName', 'VVIP Elite')
+        ->call('saveMembershipLevel')
+        ->assertHasErrors(['membershipLevelPerkDraft.0'])
+        ->assertSet('showMembershipLevelModal', true);
+
+    expect(\App\Models\MembershipLevel::query()->count())->toBe(0);
+});
+
 it('uploads multiple business licenses and removes only the selected license from storage and the dashboard', function () {
     Storage::fake('public');
     $admin = User::factory()->create(['is_admin' => true]);

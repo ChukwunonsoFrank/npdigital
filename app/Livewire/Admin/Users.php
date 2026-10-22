@@ -59,6 +59,10 @@ class Users extends Component
 
     public string $upgradeMembershipLevel = '';
 
+    public bool $showDowngradeMembership = false;
+
+    public string $downgradeMembershipLevel = '';
+
     public ?int $manageFundsUserId = null;
 
     public string $fundsAction = 'add_funds';
@@ -205,6 +209,7 @@ class Users extends Component
             'cost' => number_format((float) $this->exclusivePrice, 2, '.', ''),
             'commission_percentage' => $this->exclusiveCommission,
             'task_image_path' => $product['image'] ?? '',
+            'brand' => $product['brand'],
             'rating' => '0',
             'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
             'status' => 'queued',
@@ -596,6 +601,85 @@ class Users extends Component
         $this->dispatch('task-user-updated');
     }
 
+    public function openDowngradeMembership(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->downgradeMembershipLevel = $this->eligibleDowngradeLevels($user)->first()?->name ?? '';
+        $this->resetValidation();
+        $this->showDowngradeMembership = true;
+    }
+
+    public function closeDowngradeMembership(): void
+    {
+        $this->showDowngradeMembership = false;
+        $this->reset('downgradeMembershipLevel');
+        $this->resetValidation();
+    }
+
+    public function applyDowngradeMembership(): void
+    {
+        $user = $this->selectedUserId === null
+            ? null
+            : User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            $this->closeDowngradeMembership();
+
+            return;
+        }
+
+        $this->validate([
+            'downgradeMembershipLevel' => ['required', Rule::in($this->eligibleDowngradeLevels($user)->pluck('name')->all())],
+        ], [
+            'downgradeMembershipLevel.required' => 'Please select a membership level.',
+            'downgradeMembershipLevel.in' => 'Please select a level below the user’s current membership level.',
+        ]);
+
+        DB::transaction(function () use ($user): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $lockedUser->membership_level = $this->downgradeMembershipLevel;
+
+            if ($lockedUser->required_upgrade_level !== null && ! $lockedUser->requiresUpgrade()) {
+                $lockedUser->required_upgrade_level = null;
+            }
+
+            $lockedUser->save();
+        });
+
+        $this->dispatch('toast', message: 'Membership level updated successfully.');
+        $this->closeDowngradeMembership();
+        $this->dispatch('task-user-updated');
+    }
+
+    /** @return Collection<int, MembershipLevel> */
+    private function eligibleDowngradeLevels(User $user): Collection
+    {
+        $currentLevel = $user->membership_level ?: 'Normal';
+        $currentPercentage = MembershipLevel::query()->where('name', $currentLevel)->value('percentage');
+
+        if ($currentPercentage === null) {
+            return new Collection;
+        }
+
+        return MembershipLevel::query()
+            ->where('name', '!=', $currentLevel)
+            ->where('percentage', '<', $currentPercentage)
+            ->orderByDesc('percentage')
+            ->get();
+    }
+
     public function openFunds(): void
     {
         $user = $this->selectedUserId === null
@@ -878,6 +962,7 @@ class Users extends Component
             'manageFundsUser' => $manageFundsUser,
             'membershipLevels' => $membershipLevels,
             'upgradeTargetLevels' => $upgradeTargetUser ? $this->eligibleUpgradeLevels($upgradeTargetUser) : collect(),
+            'downgradeMembershipLevels' => $selectedUser ? $this->eligibleDowngradeLevels($selectedUser) : collect(),
             'warehouseGroups' => $warehouseGroups,
             'exclusiveProducts' => $this->showAddExclusive ? $this->exclusiveProducts() : [],
             'exclusiveTaskCount' => $selectedUser ? CompletedTask::query()->where('user_id', $selectedUser->id)->whereNotNull('commission_percentage')->whereIn('status', ['queued', 'pending'])->count() : 0,

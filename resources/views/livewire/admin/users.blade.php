@@ -159,6 +159,7 @@
                         @endif
                         <button type="button" wire:click="deleteUser" wire:confirm="DELETE ACCOUNT: This will permanently delete {{ $name }}'s account and ALL related records. This action is IRREVERSIBLE. Continue?" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-destructive/30 bg-background px-3 text-xs font-medium text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="trash-2" class="mr-1 h-3 w-3" /> Delete Account</button>
                         <button type="button" wire:click="openUpgradeMembership" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-primary/30 bg-background px-3 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="circle-arrow-up" class="mr-1 h-3 w-3" /> Upgrade</button>
+                        <button type="button" wire:click="openDowngradeMembership" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-destructive/30 bg-background px-3 text-xs font-medium text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="circle-arrow-down" class="mr-1 h-3 w-3" /> Downgrade</button>
                     </div>
                 </div>
             </section>
@@ -233,7 +234,10 @@
                             <span class="inline-flex rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">EXCLUSIVE</span>
                             <div class="flex items-center gap-3">
                                 @if ($exclusiveProduct['image_url'])
-                                    <img src="{{ $exclusiveProduct['image_url'] }}" alt="{{ $exclusiveProduct['name'] }}" class="h-16 w-16 rounded-md object-cover">
+                                    <div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+                                        <img src="{{ $exclusiveProduct['image_url'] }}" alt="{{ $exclusiveProduct['name'] }}" class="h-full w-full object-cover">
+                                        <x-product-brand-logo :brand="$exclusiveProduct['brand']" size="sm" />
+                                    </div>
                                 @endif
                                 <p class="text-sm font-bold text-foreground">{{ $exclusiveProduct['name'] }}{{ $exclusiveProduct['name2'] ? ' + '.$exclusiveProduct['name2'] : '' }}</p>
                             </div>
@@ -308,6 +312,60 @@
                         <x-dashboard.icon name="circle-arrow-up" class="mr-1 h-3 w-3" />
                         Upgrade
                     </button>
+                </div>
+            </section>
+        </div>
+    @endif
+
+    @if ($showDowngradeMembership && $selectedUser)
+        @php
+            $downgradeName = $selectedUser->name ?: $selectedUser->username;
+            $downgradeCurrentLevel = $selectedUser->membership_level ?: 'Normal';
+        @endphp
+        <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation" wire:click.self="closeDowngradeMembership">
+            <section role="dialog" aria-modal="true" aria-labelledby="downgrade-membership-title"
+                class="relative w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
+                <button type="button" wire:click="closeDowngradeMembership" aria-label="Close downgrade membership"
+                    class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground transition-opacity hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <x-dashboard.icon name="x" class="h-4 w-4" />
+                </button>
+
+                <header class="flex flex-col space-y-1.5 text-center sm:text-left">
+                    <h2 id="downgrade-membership-title" class="text-lg font-semibold leading-none tracking-tight text-foreground">Downgrade Membership</h2>
+                    <p class="text-sm text-muted-foreground">{{ $downgradeName }} — Current: <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{{ $downgradeCurrentLevel }}</span></p>
+                </header>
+
+                <div class="mt-4 space-y-4">
+                    @if ($downgradeMembershipLevels->isEmpty())
+                        <p class="text-sm text-muted-foreground">This user is already on the lowest membership level.</p>
+                    @else
+                        <div class="space-y-2">
+                            <label for="downgrade-membership-level" class="text-sm font-medium leading-none text-foreground">New Membership Level</label>
+                            <select wire:model="downgradeMembershipLevel" id="downgrade-membership-level"
+                                class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
+                                @foreach ($downgradeMembershipLevels as $membershipLevel)
+                                    <option value="{{ $membershipLevel->name }}">{{ $membershipLevel->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('downgradeMembershipLevel')
+                                <p class="text-xs text-destructive">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    @endif
+                </div>
+
+                <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" wire:click="closeDowngradeMembership"
+                        class="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        Cancel
+                    </button>
+                    @if ($downgradeMembershipLevels->isNotEmpty())
+                        <button type="button" wire:click="applyDowngradeMembership" wire:loading.attr="disabled"
+                            class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-destructive px-3 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                            <x-dashboard.icon name="circle-arrow-down" class="mr-1 h-3 w-3" />
+                            Downgrade
+                        </button>
+                    @endif
                 </div>
             </section>
         </div>

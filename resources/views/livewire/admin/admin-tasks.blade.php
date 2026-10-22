@@ -226,7 +226,12 @@
                                         @foreach (['' => 'premiumPrice', '2' => 'premiumPrice2'] as $suffix => $priceProperty)
                                             @if ($premiumProduct['name'.$suffix])
                                                 <div class="flex items-center gap-3">
-                                                    @if ($premiumProduct['image_url'.$suffix])<img src="{{ $premiumProduct['image_url'.$suffix] }}" alt="{{ $premiumProduct['name'.$suffix] }}" class="h-12 w-12 shrink-0 rounded-md object-cover" />@endif
+                                                    @if ($premiumProduct['image_url'.$suffix])
+                                                        <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-md">
+                                                            <img src="{{ $premiumProduct['image_url'.$suffix] }}" alt="{{ $premiumProduct['name'.$suffix] }}" class="h-full w-full object-cover" />
+                                                            <x-product-brand-logo :brand="$premiumProduct['brand'.$suffix]" size="sm" />
+                                                        </div>
+                                                    @endif
                                                     <div class="min-w-0 flex-1 space-y-1"><p class="break-words text-sm font-bold">{{ $premiumProduct['name'.$suffix] }}</p><flux:input wire:model.live.debounce.300ms="{{ $priceProperty }}" aria-label="{{ $premiumProduct['name'.$suffix] }} price" type="number" min="0.01" step="0.01" class="max-w-28" /></div>
                                                 </div>
                                             @endif

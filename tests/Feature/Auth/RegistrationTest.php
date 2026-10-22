@@ -45,6 +45,7 @@ test('new users can register', function () {
     $this->assertAuthenticated();
     expect(User::query()->where('username', 'testuser')->firstOrFail())
         ->is_training->toBeFalse()
+        ->membership_level->toBe('Normal')
         ->name->toBe('Jane Smith')
         ->mobile_number->toBe('+2341234567890');
 

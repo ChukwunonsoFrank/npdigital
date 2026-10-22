@@ -6,6 +6,7 @@ use App\Livewire\Admin\Warehouse;
 use App\Models\User;
 use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
+use App\Support\ProductBrand;
 use App\Support\ProductWarehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -181,10 +182,18 @@ it('builds the warehouse product data for every membership level', function () {
                 ->and($item['price'])->toBeLessThanOrEqual($expected['max'])
                 ->and($item['commission'])->toBe($expected['commission'])
                 ->and($item['id'])->toStartWith("prod-{$level}-d1-a-")
-                ->and($item['name'])->not->toBe('');
+                ->and($item['name'])->not->toBe('')
+                ->and($item['brand'])->toBeIn(ProductBrand::BRANDS);
         }
 
-        expect(ProductWarehouse::exclusiveProducts($level))->toHaveCount(5);
+        $exclusives = ProductWarehouse::exclusiveProducts($level);
+
+        expect($exclusives)->toHaveCount(5);
+
+        foreach ($exclusives as $exclusive) {
+            expect($exclusive['brand'])->toBeIn(ProductBrand::BRANDS)
+                ->and($exclusive['brand2'])->toBeIn(ProductBrand::BRANDS);
+        }
     }
 });
 
@@ -205,7 +214,14 @@ it('shows level specific product details when a group is expanded', function () 
         ->call('toggleGroup', 'a')
         ->assertSee('Canvas Sneakers')
         ->assertSee('38')
-        ->assertSee('0.5% comm');
+        ->assertSee('0.5% comm')
+        ->assertSeeHtml('brands/');
+});
+
+it('assigns a brand when a warehouse product is created', function () {
+    $product = WarehouseProduct::factory()->create();
+
+    expect($product->brand)->toBeIn(ProductBrand::BRANDS);
 });
 
 it('adds a product to the open day group', function () {

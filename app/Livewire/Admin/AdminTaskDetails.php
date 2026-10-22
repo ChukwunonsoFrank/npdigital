@@ -23,6 +23,8 @@ class AdminTaskDetails extends Component
 
     public string $task_level = '';
 
+    public string $brand = '';
+
     public string $previousImagePath = '';
 
     public $image;
@@ -35,6 +37,7 @@ class AdminTaskDetails extends Component
             $this->title = $task->title;
             $this->cost = (string) $task->cost;
             $this->task_level = $task->task_level;
+            $this->brand = (string) $task->brand;
             $this->previousImagePath = $task->task_image_path;
         }
     }

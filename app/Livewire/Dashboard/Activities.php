@@ -58,11 +58,36 @@ class Activities extends Component
         ];
 
         $configuredLevels = MembershipLevel::query()->get()->keyBy('name');
+
+        $palette = [
+            ['border' => 'hsl(270 60% 45%)', 'accent' => 'hsl(270 65% 45%)', 'accent_border' => 'hsl(270 65% 55%)'],
+            ['border' => 'hsl(340 65% 45%)', 'accent' => 'hsl(340 70% 45%)', 'accent_border' => 'hsl(340 70% 55%)'],
+            ['border' => 'hsl(160 55% 35%)', 'accent' => 'hsl(160 60% 35%)', 'accent_border' => 'hsl(160 60% 45%)'],
+            ['border' => 'hsl(25 75% 45%)', 'accent' => 'hsl(25 80% 45%)', 'accent_border' => 'hsl(25 80% 55%)'],
+        ];
+
+        foreach ($configuredLevels as $configured) {
+            if (collect($levels)->contains('name', $configured->name)) {
+                continue;
+            }
+
+            $levels[] = [
+                'name' => $configured->name,
+                'image' => null,
+                'border' => $palette[count($levels) % count($palette)]['border'],
+                'percentage' => (string) $configured->percentage,
+                'tasks' => 0,
+                'target' => (float) $configured->minimum_balance > 0 ? (float) $configured->minimum_balance : null,
+                'accent' => $palette[count($levels) % count($palette)]['accent'],
+                'accent_border' => $palette[count($levels) % count($palette)]['accent_border'],
+            ];
+        }
+
         $currentPercentage = (float) ($configuredLevels->get(auth()->user()->membership_level)?->percentage ?? 0);
         $pendingLevelId = UpgradeRequest::query()->where('user_id', auth()->id())->where('status', 'pending')->value('membership_level_id');
 
         return array_map(function (array $level) use ($currentCents, $configuredLevels, $currentPercentage, $pendingLevelId): array {
-            if ($level['target'] === null) {
+            if ($level['target'] === null || (float) $level['target'] <= 0) {
                 return $level + ['progress' => null];
             }
 

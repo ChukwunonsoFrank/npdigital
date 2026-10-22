@@ -229,3 +229,32 @@ test('submitting the task modal from the records page approves it', function () 
         ->and($this->user->total_commission)->toBe(50)
         ->and($this->user->balance)->toBe(50050);
 });
+
+test('record page shows brand logos on pending and approved products', function () {
+    CompletedTask::create([
+        'user_id' => $this->user->id,
+        'title' => 'Pending Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'brand' => 'amazon',
+        'rating' => '',
+        'rating_id' => '',
+        'status' => 'pending',
+    ]);
+
+    CompletedTask::create([
+        'user_id' => $this->user->id,
+        'title' => 'Approved Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'brand' => 'target',
+        'rating' => '',
+        'rating_id' => '',
+        'status' => 'approved',
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(Record::class)
+        ->assertSeeHtml('brands/amazon.png')
+        ->assertSeeHtml('brands/target.png');
+});

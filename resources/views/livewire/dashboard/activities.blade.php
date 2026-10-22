@@ -258,18 +258,26 @@
                         class="rounded-2xl border p-6 shadow-lg transition-all hover:shadow-xl"
                         style="border-color: {{ $level['border'] }}; background: hsl(220 25% 12%);">
                         <div class="mb-5 flex flex-col items-center text-center">
-                            <img src="{{ asset($level['image']) }}" alt="{{ $level['name'] }} badge"
-                                class="mb-3 h-20 w-20 object-contain drop-shadow-lg">
+                            @if ($level['image'])
+                                <img src="{{ asset($level['image']) }}" alt="{{ $level['name'] }} badge"
+                                    class="mb-3 h-20 w-20 object-contain drop-shadow-lg">
+                            @else
+                                <span class="mb-3 flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/5">
+                                    <x-dashboard.icon name="crown" class="h-10 w-10 text-[hsl(45,90%,60%)]" />
+                                </span>
+                            @endif
                             <h4 class="font-display text-lg font-bold text-white">{{ $level['name'] }}</h4>
                         </div>
 
                         <ul class="mb-5 space-y-2.5">
-                            @foreach ($membershipPerks[$level['name']] as $perk)
+                            @forelse ($membershipPerks[$level['name']] ?? [] as $perk)
                                 <li wire:key="level-perk-{{ $level['name'] }}-{{ $loop->index }}" class="flex items-start gap-2 text-sm font-medium text-[hsl(220,10%,75%)]">
                                     <span class="mt-0.5 shrink-0 text-[hsl(220,10%,55%)]">&bull;</span>
                                     <span class="min-w-0 break-words">{{ $perk }}</span>
                                 </li>
-                            @endforeach
+                            @empty
+                                <li class="text-sm font-medium text-[hsl(220,10%,55%)]">No perks yet.</li>
+                            @endforelse
                         </ul>
 
                         @if ($level['progress'])

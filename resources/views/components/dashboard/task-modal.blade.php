@@ -35,8 +35,11 @@
 
             <h2 class="px-6 text-center font-display text-lg font-bold text-foreground">{{ $pendingTask->title }}</h2>
 
-            <img src="{{ \App\Support\ProductWarehouse::imageUrl($pendingTask->task_image_path) }}" alt="{{ $pendingTask->title }}"
-                class="mx-auto mt-4 h-44 w-44 rounded-lg object-cover">
+            <div class="relative mx-auto mt-4 h-44 w-44">
+                <img src="{{ \App\Support\ProductWarehouse::imageUrl($pendingTask->task_image_path) }}"
+                    alt="{{ $pendingTask->title }}" class="h-full w-full rounded-lg object-cover">
+                <x-product-brand-logo :brand="$pendingTask->brand" />
+            </div>
 
             <div class="mt-4 space-y-1 text-center text-sm">
                 <p class="text-foreground"><span class="text-muted-foreground">Cost:</span>

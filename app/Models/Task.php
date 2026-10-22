@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ProductBrand;
 use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
@@ -15,6 +16,14 @@ class Task extends Model
         'title',
         'cost',
         'task_image_path',
+        'brand',
         'task_level',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $task): void {
+            $task->brand ??= ProductBrand::random();
+        });
+    }
 }

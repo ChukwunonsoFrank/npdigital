@@ -5,7 +5,6 @@ namespace App\Livewire\Auth;
 use App\Notifications\UserLoggedIn;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,8 +31,6 @@ class Login extends Component
     #[Validate('nullable|string|timezone')]
     public ?string $timezone = null;
 
-    public ?string $gRecaptchaResponse = null;
-
     /**
      * Handle an incoming authentication request.
      */
@@ -41,10 +38,6 @@ class Login extends Component
     {
         try {
             $this->validate();
-
-            if (! $this->hasValidRecaptchaResponse()) {
-                return;
-            }
 
             $this->ensureIsNotRateLimited();
 
@@ -92,36 +85,6 @@ class Login extends Component
             Log::error('Login failed', ['exception' => $e]);
             $this->dispatch('login-error', message: 'Something went wrong while signing in. Please try again.')->self();
         }
-    }
-
-    protected function hasValidRecaptchaResponse(): bool
-    {
-        if (! config('services.recaptcha.enabled')) {
-            return true;
-        }
-
-        if (blank($this->gRecaptchaResponse)) {
-            $this->dispatch('login-error', message: 'Please confirm you are not a robot.')->self();
-
-            return false;
-        }
-
-        $recaptchaResponse = Http::asForm()
-            ->timeout(10)
-            ->post('https://www.google.com/recaptcha/api/siteverify', [
-                'secret' => config('services.recaptcha.secret'),
-                'response' => $this->gRecaptchaResponse,
-            ]);
-
-        if (! $recaptchaResponse->successful() || $recaptchaResponse->json('success') !== true) {
-            $this->gRecaptchaResponse = null;
-            $this->dispatch('recaptcha-reset')->self();
-            $this->dispatch('login-error', message: 'Please confirm you are not a robot.')->self();
-
-            return false;
-        }
-
-        return true;
     }
 
     /**

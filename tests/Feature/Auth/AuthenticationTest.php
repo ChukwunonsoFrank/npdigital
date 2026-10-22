@@ -10,21 +10,22 @@ use Livewire\Livewire;
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 test('login screen can be rendered', function () {
+    config(['services.recaptcha.enabled' => true]);
+
     $response = $this->get('/login');
 
     $response
         ->assertStatus(200)
-        ->assertSee('data-recaptcha-widget', false)
-        ->assertSee('https://www.google.com/recaptcha/api.js', false)
+        ->assertDontSee('data-recaptcha-widget', false)
+        ->assertDontSee('https://www.google.com/recaptcha/api.js', false)
         ->assertSee(route('password.request', absolute: false))
         ->assertDontSee('href="'.route('password.request').'" class="text-muted"', false);
 });
 
 test('users can authenticate using the login screen', function () {
     Notification::fake();
-    Http::fake([
-        'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
-    ]);
+    Http::fake();
+    config(['services.recaptcha.enabled' => true]);
 
     $user = User::factory()->create([
         'timezone' => 'Africa/Lagos',
@@ -33,13 +34,13 @@ test('users can authenticate using the login screen', function () {
     $response = Livewire::test(Login::class)
         ->set('username', $user->username)
         ->set('password', 'password')
-        ->set('gRecaptchaResponse', 'fake-token')
         ->call('login');
 
     $response
         ->assertHasNoErrors();
 
     $this->assertAuthenticated();
+    Http::assertNothingSent();
     expect($user->fresh()->timezone)->toBe('Africa/Lagos');
 
     Notification::assertSentOnDemand(
@@ -69,9 +70,6 @@ test('admins are redirected to the admin dashboard after login', function () {
 
 test('login updates the users timezone when the browser supplies a valid timezone', function () {
     Notification::fake();
-    Http::fake([
-        'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
-    ]);
 
     $user = User::factory()->create([
         'timezone' => 'UTC',
@@ -81,7 +79,6 @@ test('login updates the users timezone when the browser supplies a valid timezon
         ->set('username', $user->username)
         ->set('password', 'password')
         ->set('timezone', 'Africa/Lagos')
-        ->set('gRecaptchaResponse', 'fake-token')
         ->call('login')
         ->assertHasNoErrors();
 
@@ -89,22 +86,19 @@ test('login updates the users timezone when the browser supplies a valid timezon
 });
 
 test('users can not authenticate with invalid password', function () {
-    Http::fake([
-        'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
-    ]);
-
     $user = User::factory()->create();
 
     $response = Livewire::test(Login::class)
         ->set('username', $user->username)
         ->set('password', 'wrong-password')
-        ->set('gRecaptchaResponse', 'fake-token')
-        ->call('login');
+        ->call('login')
+        ->assertHasErrors('username');
 
     $this->assertGuest();
 });
 
-test('users can not authenticate without completing recaptcha', function () {
+test('users can authenticate without completing recaptcha', function () {
+    Notification::fake();
     config(['services.recaptcha.enabled' => true]);
 
     $user = User::factory()->create();
@@ -113,28 +107,30 @@ test('users can not authenticate without completing recaptcha', function () {
         ->set('username', $user->username)
         ->set('password', 'password')
         ->call('login')
-        ->assertDispatched('login-error', message: 'Please confirm you are not a robot.');
+        ->assertHasNoErrors()
+        ->assertRedirect('/dashboard');
 
-    $this->assertGuest();
+    $this->assertAuthenticatedAs($user);
 });
 
-test('users can not authenticate when recaptcha verification fails', function () {
+test('login remains rate limited without recaptcha', function () {
+    $this->freezeTime();
     config(['services.recaptcha.enabled' => true]);
-
-    Http::fake([
-        'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false]),
-    ]);
 
     $user = User::factory()->create();
 
-    Livewire::test(Login::class)
+    $form = Livewire::test(Login::class)
         ->set('username', $user->username)
-        ->set('password', 'password')
-        ->set('gRecaptchaResponse', 'invalid-token')
+        ->set('password', 'wrong-password');
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $form->call('login')->assertHasErrors('username');
+    }
+
+    $form->set('password', 'password')
         ->call('login')
-        ->assertSet('gRecaptchaResponse', null)
-        ->assertDispatched('recaptcha-reset')
-        ->assertDispatched('login-error', message: 'Please confirm you are not a robot.');
+        ->assertHasErrors('username')
+        ->assertDispatched('login-error', message: __('auth.throttle', ['seconds' => 60, 'minutes' => 1]));
 
     $this->assertGuest();
 });

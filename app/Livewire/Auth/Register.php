@@ -133,7 +133,7 @@ class Register extends Component
                         'total_commission' => 0,
                         'processing_amount' => 0,
                         'credit_score' => 100,
-                        'membership_level' => 'Silver',
+                        'membership_level' => 'Normal',
                         'account_status' => 'active',
                         'referral_code' => $this->generateReferralCode(),
                         'referred_by' => $refCode ?: null,

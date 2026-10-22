@@ -4,7 +4,11 @@
         @if ($task)
             <div class="section mt-2">
                 <div class="card">
-                    <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}" class="card-img-top" alt="image">
+                    <div class="relative">
+                        <img src="{{ \App\Support\ProductWarehouse::imageUrl($task->task_image_path) }}"
+                            class="card-img-top" alt="{{ $task->title }}">
+                        <x-product-brand-logo :brand="$task->brand" />
+                    </div>
                     <div class="card-body">
                         <h6 class="card-title text-black text-center mb-3 fs-6">{{ $task->title }}</h6>
                         <h5 class="card-title text-black text-center font-bold mb-3">Rate Us Now</h5>

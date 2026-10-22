@@ -23,14 +23,14 @@
             </div>
         @endif
 
-        <div class="grid h-10 w-full grid-cols-5 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground"
+        <div class="flex min-h-10 w-full flex-wrap items-center justify-center gap-1 rounded-md bg-muted p-1 text-muted-foreground"
             role="tablist" aria-label="Membership level">
             @foreach ($levels as $levelOption)
                 <button type="button" role="tab" wire:key="level-{{ $levelOption['value'] }}"
                     wire:click="selectLevel('{{ $levelOption['value'] }}')"
                     aria-selected="{{ $level === $levelOption['value'] ? 'true' : 'false' }}"
                     @class([
-                        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'inline-flex flex-1 basis-[80px] items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         'bg-card text-foreground shadow-sm' => $level === $levelOption['value'],
                         'text-muted-foreground hover:text-foreground' => $level !== $levelOption['value'],
                     ])>
@@ -91,6 +91,7 @@
                                                                 <img src="{{ $product['image_url'] }}"
                                                                     alt="{{ $product['name'] }}" loading="lazy"
                                                                     class="absolute inset-0 h-full w-full object-cover">
+                                                                <x-product-brand-logo :brand="$product['brand']" size="sm" />
                                                             @endif
                                                         </div>
                                                         <div class="flex-1 space-y-1 p-3">
@@ -169,13 +170,14 @@
 
                                     <div class="flex items-start gap-3 px-3 pb-2 pt-2">
                                         <div
-                                            class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                                            class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
                                             <x-dashboard.icon name="image"
                                                 class="h-8 w-8 text-muted-foreground/40" />
                                             @if ($product['image_url'])
                                                 <img src="{{ $product['image_url'] }}"
                                                     alt="{{ $product['name'] }}" loading="lazy"
                                                     class="h-full w-full object-cover">
+                                                <x-product-brand-logo :brand="$product['brand']" size="sm" />
                                             @endif
                                         </div>
 

@@ -2,11 +2,13 @@
 
 namespace App\Support;
 
+use App\Models\MembershipLevel;
 use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
 use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 /**
  * Builds the product warehouse shown on the admin warehouse page.
@@ -37,23 +39,37 @@ class ProductWarehouse
      */
     public static function levels(): array
     {
+        $membershipLevels = MembershipLevel::query()->orderBy('id')->get();
+        $levels = [];
+
+        foreach (self::data()['levels'] as $level) {
+            $levels[$level] = $membershipLevels
+                ->first(fn (MembershipLevel $membershipLevel): bool => strtolower($membershipLevel->name) === $level)
+                ?->name ?? ucfirst($level);
+        }
+
+        foreach ($membershipLevels as $membershipLevel) {
+            $levels[Str::slug($membershipLevel->name)] = $membershipLevel->name;
+        }
+
         return array_map(
-            fn (string $level): array => [
-                'value' => $level,
-                'label' => self::label($level),
+            fn (string $value, string $label): array => [
+                'value' => $value,
+                'label' => $label,
             ],
-            self::data()['levels'],
+            array_keys($levels),
+            array_values($levels),
         );
     }
 
     public static function isValidLevel(string $level): bool
     {
-        return in_array($level, self::data()['levels'], true);
+        return in_array($level, array_column(self::levels(), 'value'), true);
     }
 
     public static function label(string $level): string
     {
-        return ucfirst($level);
+        return self::membershipLevel($level)?->name ?? ucfirst($level);
     }
 
     /**
@@ -122,12 +138,13 @@ class ProductWarehouse
         if (self::usesDatabase($level)) {
             return (float) (WarehouseProduct::query()
                 ->where('level', $level)
-                ->value('commission') ?? match ($level) {
+                ->value('commission') ?? self::membershipLevel($level)?->percentage ?? match ($level) {
                     'normal' => 0.5,
                     'silver' => 0.75,
                     'gold' => 1.0,
                     'platinum' => 1.25,
                     'diamond' => 1.5,
+                    default => 0.0,
                 });
         }
 
@@ -153,7 +170,7 @@ class ProductWarehouse
     /**
      * Products of a day group, with admin edits applied and admin additions appended.
      *
-     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, description: string|null, price: float, commission: float, assigned: int, total: int}>
+     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, brand: string, description: string|null, price: float, commission: float, assigned: int, total: int}>
      */
     public static function groupItems(string $level, int $day, string $group): array
     {
@@ -170,6 +187,7 @@ class ProductWarehouse
                     'name' => (string) $product->name,
                     'image' => $product->image_url,
                     'image_url' => self::imageUrl($product->image_url),
+                    'brand' => ProductBrand::resolve($product->brand, $product->product_id),
                     'description' => $product->description,
                     'price' => (float) $product->price,
                     'commission' => (float) $product->commission,
@@ -202,6 +220,7 @@ class ProductWarehouse
                     'id' => $change->product_id,
                     'name' => (string) $change->name,
                     'image' => $change->image_url,
+                    'brand' => ProductBrand::resolve($change->brand, $change->product_id),
                     'description' => $change->description,
                     'price' => (float) ($change->price ?? 0),
                     'commission' => (float) ($change->commission ?? 0),
@@ -222,7 +241,7 @@ class ProductWarehouse
     /**
      * Get the legacy generated products used to retain the existing pricing pattern during import.
      *
-     * @return list<array{id: string, name: string, image: string|null, price: int, commission: float, description: string, assigned: int, total: int}>
+     * @return list<array{id: string, name: string, image: string|null, brand: string, price: int, commission: float, description: string, assigned: int, total: int}>
      */
     public static function legacyGroupItems(string $level, int $day, string $group): array
     {
@@ -231,7 +250,19 @@ class ProductWarehouse
 
     private static function usesDatabase(string $level): bool
     {
-        return in_array($level, self::DATABASE_LEVELS, true);
+        return in_array($level, self::DATABASE_LEVELS, true)
+            || self::membershipLevel($level) !== null;
+    }
+
+    /**
+     * Find the membership level whose key matches the warehouse level.
+     */
+    private static function membershipLevel(string $level): ?MembershipLevel
+    {
+        return MembershipLevel::query()->get()->first(
+            fn (MembershipLevel $membershipLevel): bool => strtolower($membershipLevel->name) === $level
+                || Str::slug($membershipLevel->name) === $level,
+        );
     }
 
     /**
@@ -246,6 +277,7 @@ class ProductWarehouse
             ...$item,
             'name' => (string) ($change->name ?? $item['name']),
             'image' => $change->image_url ?? $item['image'],
+            'brand' => ProductBrand::resolve($change->brand, (string) $item['id']),
             'description' => $change->description ?? $item['description'],
             'price' => (float) ($change->price ?? $item['price']),
             'commission' => (float) ($change->commission ?? $item['commission']),
@@ -267,7 +299,7 @@ class ProductWarehouse
     /**
      * Products drawn from the level pool before admin changes are applied.
      *
-     * @return list<array{id: string, name: string, image: string|null, price: int, commission: float, description: string, assigned: int, total: int}>
+     * @return list<array{id: string, name: string, image: string|null, brand: string, price: int, commission: float, description: string, assigned: int, total: int}>
      */
     private static function baseGroupItems(string $level, int $day, string $group): array
     {
@@ -282,10 +314,13 @@ class ProductWarehouse
         $products = [];
 
         foreach (array_values($items) as $index => $item) {
+            $id = "prod-{$level}-d{$day}-{$group}-{$seed}-{$index}";
+
             $products[] = [
-                'id' => "prod-{$level}-d{$day}-{$group}-{$seed}-{$index}",
+                'id' => $id,
                 'name' => $item['name'],
                 'image' => $item['image'],
+                'brand' => ProductBrand::forSeed($id),
                 'price' => $item['price'],
                 'commission' => $commission,
                 'description' => $item['description'],
@@ -319,7 +354,7 @@ class ProductWarehouse
     /**
      * Premium combos of a level, with admin edits applied and admin additions appended.
      *
-     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, price: float, commission: float, description: string|null, name2: string|null, image2: string|null, image_url2: string|null, price2: float|null}>
+     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, brand: string, price: float, commission: float, description: string|null, name2: string|null, image2: string|null, image_url2: string|null, brand2: string, price2: float|null}>
      */
     public static function exclusiveProducts(string $level): array
     {
@@ -327,11 +362,13 @@ class ProductWarehouse
             'id' => $product['id'],
             'name' => $product['name'],
             'image' => ($product['image'] ?? '') !== '' ? $product['image'] : null,
+            'brand' => ProductBrand::forSeed($level.'-'.$product['id']),
             'price' => (float) $product['price'],
             'commission' => (float) $product['commission'],
             'description' => $product['description'],
             'name2' => $product['name2'] ?? null,
             'image2' => ($product['image2'] ?? '') !== '' ? $product['image2'] : null,
+            'brand2' => ProductBrand::forSeed($level.'-'.$product['id'].'-2'),
             'price2' => isset($product['price2']) ? (float) $product['price2'] : null,
         ], self::data()['exclusives'][$level] ?? []);
 
@@ -358,11 +395,13 @@ class ProductWarehouse
                     'id' => $change->exclusive_id,
                     'name' => (string) $change->name,
                     'image' => $change->image_url,
+                    'brand' => ProductBrand::resolve($change->brand, $change->exclusive_id),
                     'price' => (float) ($change->price ?? 0),
                     'commission' => (float) ($change->commission ?? 0),
                     'description' => $change->description,
                     'name2' => $change->name2,
                     'image2' => $change->image_url2,
+                    'brand2' => ProductBrand::resolve($change->brand2, $change->exclusive_id.'-2'),
                     'price2' => $change->price2 === null ? null : (float) $change->price2,
                 ];
             }
@@ -389,11 +428,13 @@ class ProductWarehouse
             ...$item,
             'name' => (string) ($change->name ?? $item['name']),
             'image' => $change->image_url ?? $item['image'],
+            'brand' => ProductBrand::resolve($change->brand, (string) $item['id']),
             'price' => (float) ($change->price ?? $item['price']),
             'commission' => (float) ($change->commission ?? $item['commission']),
             'description' => $change->description ?? $item['description'],
             'name2' => $change->name2 ?? $item['name2'],
             'image2' => $change->image_url2 ?? $item['image2'],
+            'brand2' => ProductBrand::resolve($change->brand2, (string) $item['id'].'-2'),
             'price2' => $change->price2 ?? $item['price2'],
         ];
     }

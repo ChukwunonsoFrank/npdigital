@@ -117,9 +117,11 @@
                                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                                     Current Image
                                 </label>
-                                <img src="{{ route('storage.file', $this->previousImagePath) }}"
-                                    alt="Current Task Image"
-                                    class="h-32 w-auto rounded-lg object-cover mb-3" />
+                                <div class="relative mb-3 h-32 w-32 overflow-hidden rounded-lg">
+                                    <img src="{{ route('storage.file', $this->previousImagePath) }}"
+                                        alt="Current Task Image" class="h-full w-full object-cover" />
+                                    <x-product-brand-logo :brand="$brand" />
+                                </div>
                             </div>
 
                             <div class="w-full px-2.5 xl:w-1/2">

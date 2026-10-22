@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.5.0/css/flag-icons.min.css">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    @if (config('services.recaptcha.enabled'))
+    @if (config('services.recaptcha.enabled') && ! request()->routeIs('login'))
         <script src="https://www.google.com/recaptcha/api.js" async defer></script>
         <script>
             function onRecaptchaSuccess(token) {
@@ -94,7 +94,7 @@
     <script src="https://cdn.gtranslate.net/widgets/latest/popup.js" defer></script>
     @fluxScripts
     @livewireScripts
-    @if (config('services.recaptcha.enabled'))
+    @if (config('services.recaptcha.enabled') && ! request()->routeIs('login'))
         <script>
             document.addEventListener('livewire:init', () => {
                 Livewire.on('recaptcha-reset', () => window.grecaptcha?.reset());

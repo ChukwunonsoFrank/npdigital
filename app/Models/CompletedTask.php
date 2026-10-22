@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ProductBrand;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +18,7 @@ class CompletedTask extends Model
         'title',
         'cost',
         'task_image_path',
+        'brand',
         'rating',
         'rating_id',
         'status',
@@ -25,6 +27,13 @@ class CompletedTask extends Model
         'warehouse_product_id',
         'available_after_tasks',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $task): void {
+            $task->brand ??= ProductBrand::random();
+        });
+    }
 
     public function user(): BelongsTo
     {

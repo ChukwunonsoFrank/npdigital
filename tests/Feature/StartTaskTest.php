@@ -20,6 +20,7 @@ beforeEach(function () {
         'title' => 'Test Product',
         'cost' => 100,
         'task_image_path' => 'tasks/test.jpg',
+        'brand' => 'walmart',
         'task_level' => 'VIP0',
     ]);
 
@@ -75,7 +76,8 @@ test('clicking start now creates a pending completed task and opens the modal', 
     expect($completedTask)->not->toBeNull()
         ->and($completedTask->status)->toBe('pending')
         ->and($completedTask->title)->toBe('Test Product')
-        ->and($completedTask->cost)->toBe('100');
+        ->and($completedTask->cost)->toBe('100')
+        ->and($completedTask->brand)->toBe('walmart');
 });
 
 test('submitting the task modal approves the task and dispatches a toast', function () {
@@ -132,6 +134,7 @@ test('start page renders the task modal after starting a task', function () {
         ->assertSee('Rating (optional):')
         ->assertSee('Review (optional):')
         ->assertSee('Submit Task')
+        ->assertSeeHtml('brands/walmart.png')
         ->assertDontSee('Pending Product');
 });
 
