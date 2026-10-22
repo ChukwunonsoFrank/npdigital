@@ -43,6 +43,17 @@ it('renders the user home page content', function () {
         ->assertSee(route('dashboard.activities'));
 });
 
+it('loads the toast scripts once so soft navigation keeps the current toast style', function () {
+    $this->actingAs(User::factory()->create([
+        'is_admin' => false,
+        'is_banned' => false,
+    ]))
+        ->get(route('dashboard.start'))
+        ->assertOk()
+        ->assertSee('src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once', false)
+        ->assertSee('<script data-navigate-once>', false);
+});
+
 it('renders the redesigned start page content', function () {
     $user = User::factory()->create();
 

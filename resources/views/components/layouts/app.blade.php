@@ -184,7 +184,7 @@
 
     <!-- ========= JS Files =========  -->
     <!-- Toastify -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once></script>
     <x-toastify />
     <!-- Bootstrap -->
     <script src="{{ asset('assets/js/lib/bootstrap.bundle.min.js') }}"></script>

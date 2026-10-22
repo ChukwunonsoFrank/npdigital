@@ -1186,7 +1186,7 @@
     <script src="{{ asset('wp-content/plugins/elementor/assets/js/frontend.mina44d.js') }}" id="elementor-frontend-js">
     </script>
 
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once></script>
     <x-toastify />
     <script>
         function googleTranslateElementInit() {

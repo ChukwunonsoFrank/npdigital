@@ -108,7 +108,7 @@
         <x-dashboard.support-bubble />
     @endif
 
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once></script>
 
     <x-toastify />
 

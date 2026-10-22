@@ -77,7 +77,7 @@
 
     <!-- ========= JS Files =========  -->
     <!-- Toastify -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once></script>
     <x-toastify />
     <script>
         document.addEventListener('livewire:init', () => {

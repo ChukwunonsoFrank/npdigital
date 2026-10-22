@@ -30,15 +30,15 @@
     }
 </style>
 
-<script>
+<script data-navigate-once>
     (function () {
-        var NativeToastify = window.Toastify;
+        var NativeToastify = window.__npNativeToastify || window.Toastify;
 
-        if (!NativeToastify || window.__npToastifyPatched) {
+        if (!NativeToastify) {
             return;
         }
 
-        window.__npToastifyPatched = true;
+        window.__npNativeToastify = NativeToastify;
 
         var TOAST_CLASS = 'fixed z-30 bottom-[calc(68px_+_env(safe-area-inset-bottom)_+_1rem)]! left-4 right-4 rounded-2xl bg-[#141414] p-4 shadow-xl md:bottom-6! md:left-auto md:right-6 md:w-96 [&>.toast-close]:hidden';
 
@@ -67,7 +67,7 @@
                 '<p class="flex-1 text-sm font-bold leading-snug text-white">' + escapeHtml(message) + '</p></div>';
         };
 
-        window.Toastify = function (options) {
+        var npToastify = function (options) {
             options = options || {};
 
             return NativeToastify(Object.assign({}, options, {
@@ -82,9 +82,9 @@
             }));
         };
 
-        window.Toastify.defaults = NativeToastify.defaults;
+        npToastify.defaults = NativeToastify.defaults;
 
-        window.showToast = function (message) {
+        var showToast = function (message) {
             var toast = NativeToastify({
                 text: buildMarkup(message === undefined || message === null ? '' : String(message)),
                 className: TOAST_CLASS,
@@ -98,5 +98,23 @@
 
             return toast;
         };
+
+        var install = function () {
+            if (window.Toastify !== npToastify) {
+                window.Toastify = npToastify;
+            }
+
+            window.showToast = showToast;
+        };
+
+        install();
+
+        document.addEventListener('load', function (event) {
+            var script = event.target;
+
+            if (script.tagName === 'SCRIPT' && script.src.indexOf('toastify-js') !== -1) {
+                install();
+            }
+        }, true);
     })();
 </script>
