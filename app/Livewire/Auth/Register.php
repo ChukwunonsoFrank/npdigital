@@ -127,7 +127,6 @@ class Register extends Component
                         'has_made_first_deposit' => false,
                         'is_training' => false,
                         'tasks_completed' => 0,
-                        'task_pole' => 35,
                         'task_batch' => 0,
                         'daily_commission' => 0,
                         'total_commission' => 0,

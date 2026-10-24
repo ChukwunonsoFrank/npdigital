@@ -55,7 +55,7 @@ it('loads the toast scripts once so soft navigation keeps the current toast styl
 });
 
 it('renders the redesigned start page content', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['membership_level' => 'Normal']);
 
     Livewire::actingAs($user)
         ->test(DashboardStart::class)
@@ -66,7 +66,7 @@ it('renders the redesigned start page content', function () {
         ->assertSee('On Hold')
         ->assertSee('Top Rated & Best Selling Products')
         ->assertSee('product-carousel-track')
-        ->assertSee('START 0/35')
+        ->assertSee('START 0/30')
         ->assertSee('Operating Hours')
         ->assertSee('Users may optimize the Product during the daily operation hours')
         ->assertSee('from 10:00 to 22:59')
@@ -105,7 +105,7 @@ it('renders the activities page content', function () {
         ->assertSee('$1,500')
         ->assertSee('$2,000')
         ->assertSee('Day 30')
-        ->assertSee('Every user is required to complete 2 sets a day to be entitled for this program.')
+        ->assertSee('Every user is required to complete 3 sets a day to be entitled for this program.')
         ->assertSee('Platinum')
         ->assertSee('Diamond')
         ->assertSee('$7,999')

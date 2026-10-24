@@ -44,7 +44,7 @@
             </div>
             <div class="space-y-1 rounded-xl bg-amber-50 p-3 text-orange-600 dark:bg-amber-950 dark:text-orange-300">
                 <p class="text-xs">Total Submitted</p>
-                <p class="text-lg font-bold">{{ $selectedUser->tasks_completed }} / {{ $selectedUser->task_pole }}</p>
+                <p class="text-lg font-bold">{{ $selectedUser->tasks_completed }} / {{ $selectedUser->productsPerSet() }}</p>
             </div>
             <div class="space-y-1 rounded-xl bg-amber-50 p-3 text-orange-600 dark:bg-amber-950 dark:text-orange-300">
                 <p class="text-xs">Premium Tasks</p>

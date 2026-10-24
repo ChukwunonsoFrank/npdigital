@@ -809,7 +809,6 @@ class Users extends Component
 
             $lockedUser->lien_status = 'off_hold';
             $lockedUser->lien_amount = null;
-            $lockedUser->task_pole = 35;
             $lockedUser->save();
         });
 

@@ -123,7 +123,7 @@
         <div class="flex justify-center">
             <button type="button" wire:click="startTask"
                 class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-8 py-3 font-display text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90">
-                START {{ $user->tasks_completed ?? 0 }}/{{ $user->task_pole ?? 30 }}
+                START {{ $user->tasks_completed ?? 0 }}/{{ $user->productsPerSet() }}
             </button>
         </div>
 

@@ -129,8 +129,8 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
-                            <div><p class="text-xs text-muted-foreground">Total Submitted</p><p class="font-bold text-primary">{{ $selectedUser->tasks_completed }} / {{ $selectedUser->task_pole }}</p></div>
-                            <div><p class="text-xs text-muted-foreground">Tasks Available</p><p class="font-bold text-foreground">{{ max($selectedUser->task_pole - $selectedUser->tasks_completed, 0) }} / {{ $selectedUser->task_pole }}</p></div>
+                            <div><p class="text-xs text-muted-foreground">Total Submitted</p><p class="font-bold text-primary">{{ $selectedUser->tasks_completed }} / {{ $selectedUser->productsPerSet() }}</p></div>
+                            <div><p class="text-xs text-muted-foreground">Tasks Available</p><p class="font-bold text-foreground">{{ max($selectedUser->productsPerSet() - $selectedUser->tasks_completed, 0) }} / {{ $selectedUser->productsPerSet() }}</p></div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">

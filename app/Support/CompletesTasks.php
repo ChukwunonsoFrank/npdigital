@@ -29,7 +29,7 @@ trait CompletesTasks
     }
 
     /**
-     * Approve a pending task, credit the user's commission and roll the batch when the pole is reached.
+     * Approve a pending task, credit the user's commission and roll the batch when the set is complete.
      */
     protected function completeTask(User $user, CompletedTask $task, ?int $rating = null, ?string $review = null): void
     {
@@ -66,7 +66,7 @@ trait CompletesTasks
                 ->notify(new TaskThresholdReached($user->username));
         }
 
-        if ($user->tasks_completed >= $user->task_pole) {
+        if ($user->tasks_completed >= $user->productsPerSet()) {
             $user->increment('task_batch');
             $user->update(['tasks_completed' => 0]);
             $user->refresh();

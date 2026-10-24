@@ -49,8 +49,9 @@ class Start extends Component
         }
 
         $activeTaskBalanceInCents = $this->getActiveTaskBalanceInCents($user);
+        $productsPerSet = $user->productsPerSet();
 
-        if ($user->task_batch >= 3) {
+        if ($user->task_batch >= User::DAILY_TASK_SETS) {
             $this->dispatch('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.')->self();
 
             return;
@@ -85,13 +86,13 @@ class Start extends Component
             }
         }
 
-        if ($user->tasks_completed >= $user->task_pole && $user->lien_status === 'on_hold' && $user->lien_amount !== null) {
+        if ($user->tasks_completed >= $productsPerSet && $user->lien_status === 'on_hold' && $user->lien_amount !== null) {
             $this->dispatch('task-limit-reached', message: 'You need to make an extra deposit to proceed with completion of tasks.')->self();
 
             return;
         }
 
-        if ($user->tasks_completed >= $user->task_pole) {
+        if ($user->tasks_completed >= $productsPerSet) {
             $this->dispatch('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.')->self();
 
             return;

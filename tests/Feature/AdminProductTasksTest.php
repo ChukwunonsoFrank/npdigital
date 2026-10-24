@@ -30,7 +30,7 @@ it('shows assigned and unassigned members in their account columns and searches 
         'name' => 'Real Member', 'username' => 'real-search', 'is_admin' => false,
         'membership_level' => 'Gold', 'has_made_first_deposit' => false,
         'warehouse_groups' => ['gold' => ['day' => 2, 'group' => 'b']],
-        'tasks_completed' => 6, 'task_pole' => 40,
+        'tasks_completed' => 6,
     ]);
     User::factory()->create([
         'name' => 'Virtual Member', 'is_admin' => false, 'membership_level' => 'Diamond',
@@ -141,7 +141,7 @@ it('opens the task account summary and reuses the premium task flow for either a
         'is_admin' => false, 'is_training' => $isTraining, 'name' => 'Task Member',
         'membership_level' => 'Gold', 'balance' => 110321,
         'lien_status' => 'on_hold', 'lien_amount' => 4321,
-        'tasks_completed' => 5, 'task_pole' => 40,
+        'tasks_completed' => 5,
     ]);
     $product = WarehouseExclusiveProduct::factory()->create([
         'level' => 'gold', 'name' => 'Gold Premium', 'name2' => null, 'price' => 35, 'price2' => null,
@@ -216,8 +216,8 @@ it('assigns a customized premium combo to multiple accounts through all three st
 
 it('rejects mixed levels and invalid premium customization without partially assigning users', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $first = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal', 'tasks_completed' => 0, 'task_pole' => 40]);
-    $second = User::factory()->create(['is_admin' => false, 'membership_level' => 'Gold', 'tasks_completed' => 39, 'task_pole' => 40]);
+    $first = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal', 'tasks_completed' => 0]);
+    $second = User::factory()->create(['is_admin' => false, 'membership_level' => 'Gold', 'tasks_completed' => 39]);
     WarehouseProduct::factory()->count(3)->create();
     $premium = WarehouseExclusiveProduct::factory()->create();
     $wrongLevel = WarehouseExclusiveProduct::factory()->create(['level' => 'gold']);

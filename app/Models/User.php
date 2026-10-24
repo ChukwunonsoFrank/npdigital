@@ -17,6 +17,11 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Task sets a user completes in a full day of work.
+     */
+    public const DAILY_TASK_SETS = 3;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -33,7 +38,6 @@ class User extends Authenticatable
         'training_balance',
         'has_made_first_deposit',
         'tasks_completed',
-        'task_pole',
         'task_batch',
         'daily_commission',
         'total_commission',
@@ -92,6 +96,26 @@ class User extends Authenticatable
     public function warehouseGroup(): ?array
     {
         return $this->warehouse_groups[strtolower($this->membership_level)] ?? null;
+    }
+
+    /**
+     * Products that make up one set for the user's membership level.
+     */
+    public function productsPerSet(): int
+    {
+        $level = strtolower((string) $this->membership_level);
+        $catalogCount = ProductWarehouse::productCount($level);
+
+        if ($catalogCount > 0) {
+            return $catalogCount;
+        }
+
+        $group = $this->warehouseGroup();
+        $assignedCount = $group === null
+            ? 0
+            : count(ProductWarehouse::groupItems($level, $group['day'], $group['group']));
+
+        return max(1, $assignedCount);
     }
 
     /** @return list<array<string, mixed>> */

@@ -96,15 +96,13 @@ it('prevents requesting deposit for users still in first task batch without firs
     $user = User::factory()->create([
         'task_batch' => 0,
         'has_made_first_deposit' => false,
-        'task_pole' => 35,
         'lien_status' => 'off_hold',
         'lien_amount' => null,
     ]);
 
     Livewire::actingAs($admin)
         ->test(UsersDetails::class, ['id' => $user->id])
-        ->set('newTaskPole', 70)
-        ->set('taskPoleAmount', 200)
+        ->set('depositAmount', 200)
         ->call('requestDeposit')
         ->assertDispatched(
             'notify',
@@ -113,7 +111,6 @@ it('prevents requesting deposit for users still in first task batch without firs
         );
 
     $user->refresh();
-    expect($user->task_pole)->toBe(35);
     expect($user->lien_status)->toBe('off_hold');
     expect($user->lien_amount)->toBeNull();
 });
@@ -123,19 +120,16 @@ it('allows requesting deposit after first task batch', function () {
     $user = User::factory()->create([
         'task_batch' => 1,
         'has_made_first_deposit' => false,
-        'task_pole' => 35,
         'balance' => 1000,
     ]);
 
     Livewire::actingAs($admin)
         ->test(UsersDetails::class, ['id' => $user->id])
-        ->set('newTaskPole', 70)
-        ->set('taskPoleAmount', 200)
+        ->set('depositAmount', 200)
         ->call('requestDeposit')
-        ->assertDispatched('notify', message: 'Task pole set successfully', type: 'success');
+        ->assertDispatched('notify', message: 'Deposit request sent successfully', type: 'success');
 
     $user->refresh();
-    expect($user->task_pole)->toBe(70);
     expect($user->lien_status)->toBe('on_hold');
     expect($user->lien_amount)->toBe('21000');
 });

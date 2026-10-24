@@ -232,9 +232,9 @@
 
                     <div class="flex items-end justify-between">
                         <div>
-                            <span class="text-sm text-gray-500 dark:text-gray-400">Task Pole</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Products per Set</span>
                             <h5 class="mt-2 text-xl font-bold text-gray-800 dark:text-white/90">
-                                {{ $this->taskPole }}
+                                {{ $this->productsPerSet }}
                             </h5>
                         </div>
                     </div>
@@ -601,20 +601,10 @@
                                 <form wire:submit.prevent="requestDeposit()">
                                     <div class="-mx-2.5 flex flex-wrap gap-y-5">
                                         <div class="w-full px-2.5">
-                                            <input wire:model="newTaskPole" type="text"
-                                                placeholder="New Task Pole"
+                                            <input wire:model="depositAmount" type="text" placeholder="Deposit Amount"
                                                 class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10"
-                                                @error('newTaskPole') style="border-color: #ef4444;" @enderror />
-                                            @error('newTaskPole')
-                                                <p class="mt-1 text-sm" style="color: #ef4444;">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-
-                                        <div class="w-full px-2.5">
-                                            <input wire:model="taskPoleAmount" type="text" placeholder="Amount"
-                                                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10"
-                                                @error('taskPoleAmount') style="border-color: #ef4444;" @enderror />
-                                            @error('taskPoleAmount')
+                                                @error('depositAmount') style="border-color: #ef4444;" @enderror />
+                                            @error('depositAmount')
                                                 <p class="mt-1 text-sm" style="color: #ef4444;">{{ $message }}</p>
                                             @enderror
                                         </div>

@@ -77,7 +77,7 @@ class ProductWarehouse
      */
     public static function productCount(string $level): int
     {
-        return (int) self::data()['counts'][$level]['count'];
+        return (int) (self::data()['counts'][$level]['count'] ?? 0);
     }
 
     /**

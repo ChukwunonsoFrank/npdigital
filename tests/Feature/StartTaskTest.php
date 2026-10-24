@@ -12,7 +12,7 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
     $this->membershipLevel = MembershipLevel::create([
-        'name' => 'VIP0',
+        'name' => 'Normal',
         'percentage' => 0.5,
     ]);
 
@@ -21,14 +21,13 @@ beforeEach(function () {
         'cost' => 100,
         'task_image_path' => 'tasks/test.jpg',
         'brand' => 'walmart',
-        'task_level' => 'VIP0',
+        'task_level' => 'Normal',
     ]);
 
     $this->user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -43,8 +42,22 @@ test('start page displays user balance data', function () {
         ->assertSee('On Hold')
         ->assertSee('500.00')
         ->assertSee('0.00')
-        ->assertSee('START 0/35');
+        ->assertSee('START 0/30');
 });
+
+test('start page sizes sets from the membership level product count', function (string $level, int $products) {
+    MembershipLevel::firstOrCreate(['name' => $level], ['percentage' => 0.5]);
+    $this->user->update(['membership_level' => $level]);
+
+    Livewire::actingAs($this->user->fresh())
+        ->test(Start::class)
+        ->assertSee('START 0/'.$products);
+})->with([
+    ['Silver', 35],
+    ['Gold', 40],
+    ['Platinum', 45],
+    ['Diamond', 50],
+]);
 
 test('optimize page displays commission in USDT', function () {
     $completedTask = CompletedTask::create([
@@ -230,7 +243,6 @@ test('starting a task with no tasks for membership level dispatches message', fu
         'membership_level' => 'Platinum',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -246,10 +258,9 @@ test('starting a task with no tasks for membership level dispatches message', fu
 
 test('on hold user at task limit gets extra deposit message', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
-        'tasks_completed' => 35,
-        'task_pole' => 35,
+        'tasks_completed' => 30,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -265,10 +276,9 @@ test('on hold user at task limit gets extra deposit message', function () {
 
 test('start page shows the on hold amount when the account is on hold', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -305,10 +315,9 @@ test('user with balance below membership minimum balance gets toast', function (
     $this->membershipLevel->update(['minimum_balance' => '100000']);
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -354,10 +363,9 @@ test('star rating saves to completed task on submit', function () {
 
 test('user with insufficient balance gets insufficient balance toast', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 500,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -371,12 +379,11 @@ test('user with insufficient balance gets insufficient balance toast', function 
 
 test('completing a full task set moves user to next task batch', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 1000,
         'training_balance' => 50000,
         'has_made_first_deposit' => false,
-        'tasks_completed' => 34,
-        'task_pole' => 35,
+        'tasks_completed' => 29,
         'task_batch' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -409,10 +416,9 @@ test('completing a full task set moves user to next task batch', function () {
 
 test('user in second task batch without first deposit is blocked from starting tasks', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'task_batch' => 1,
         'has_made_first_deposit' => false,
         'daily_commission' => 0,
@@ -428,11 +434,31 @@ test('user in second task batch without first deposit is blocked from starting t
 
 test('user who has made first deposit can continue later batches', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'task_batch' => 1,
+        'has_made_first_deposit' => true,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertSet('showTaskModal', true)
+        ->assertNoRedirect();
+
+    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeTrue();
+});
+
+test('user who has completed two task batches can start the third set', function () {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_batch' => 2,
         'has_made_first_deposit' => true,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -450,10 +476,9 @@ test('user who has made first deposit can continue later batches', function () {
 
 test('user who has completed three task batches is blocked until reset', function () {
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'task_batch' => 3,
         'has_made_first_deposit' => true,
         'daily_commission' => 0,
@@ -471,11 +496,10 @@ test('user with a required upgrade cannot start tasks', function () {
     MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'required_upgrade_level' => 'Diamond',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -494,11 +518,10 @@ test('user with a required upgrade cannot submit a pending task', function () {
     MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'required_upgrade_level' => 'Diamond',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -531,11 +554,10 @@ test('optimize page blocks submission while an upgrade is required', function ()
     MembershipLevel::create(['name' => 'Diamond', 'percentage' => '1.50']);
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'required_upgrade_level' => 'Diamond',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -571,7 +593,6 @@ test('user who upgraded to the required level can start and submit tasks', funct
         'required_upgrade_level' => 'Silver',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 35,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,

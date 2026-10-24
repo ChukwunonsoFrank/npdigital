@@ -774,13 +774,12 @@ it('adds and deducts the on-hold balance for the selected user', function () {
 
 it('returns the on-hold balance and auto-submits any pending product', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    MembershipLevel::create(['name' => 'VIP0', 'percentage' => 0.5]);
+    MembershipLevel::create(['name' => 'Normal', 'percentage' => 0.5]);
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_pole' => 70,
         'lien_status' => 'on_hold',
         'lien_amount' => '21000',
     ]);
@@ -809,7 +808,6 @@ it('returns the on-hold balance and auto-submits any pending product', function 
 
     expect($user->lien_status)->toBe('off_hold')
         ->and($user->lien_amount)->toBeNull()
-        ->and($user->task_pole)->toBe(35)
         ->and($pendingTask->fresh()->status)->toBe('approved')
         ->and($user->tasks_completed)->toBe(1)
         ->and($user->daily_commission)->toBe(50)
@@ -1096,7 +1094,7 @@ it('runs an assigned exclusive once immediately after the current task and credi
     $user = User::factory()->create([
         'membership_level' => 'Normal', 'balance' => 10000, 'training_balance' => 0,
         'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0,
-        'task_pole' => 30, 'total_commission' => 0, 'daily_commission' => 0,
+        'total_commission' => 0, 'daily_commission' => 0,
     ]);
     MembershipLevel::create(['name' => 'Normal', 'percentage' => 1]);
     \App\Models\Task::create(['title' => 'Regular Product', 'cost' => 20, 'task_image_path' => 'test.jpg', 'task_level' => 'Normal']);

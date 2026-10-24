@@ -72,7 +72,7 @@ class PlatformSetting extends Model
                 ['day' => 15, 'reward' => 1500],
                 ['day' => 30, 'reward' => 2000],
             ],
-            'terms' => "Every user is required to complete 2 sets a day to be entitled for this program.\nWithdrawable incentives are to be credited to your account consecutively 3, 5, 15 & 30 days.",
+            'terms' => 'Every user is required to complete '.User::DAILY_TASK_SETS.' sets a day to be entitled for this program.'."\nWithdrawable incentives are to be credited to your account consecutively 3, 5, 15 & 30 days.",
         ];
     }
 

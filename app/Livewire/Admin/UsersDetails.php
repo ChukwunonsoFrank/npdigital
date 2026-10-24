@@ -40,11 +40,9 @@ class UsersDetails extends Component
 
     public $trainingBalance;
 
-    public $taskPole;
+    public $depositAmount;
 
-    public $newTaskPole;
-
-    public $taskPoleAmount;
+    public $productsPerSet;
 
     public $bonusAmount;
 
@@ -248,17 +246,15 @@ class UsersDetails extends Component
         }
 
         $this->validate([
-            'newTaskPole' => ['required'],
-            'taskPoleAmount' => ['required', 'numeric', 'min:0.01'],
+            'depositAmount' => ['required', 'numeric', 'min:0.01'],
         ], [
-            'newTaskPole.required' => 'The task pole field is required.',
-            'taskPoleAmount.required' => 'The amount field is required.',
-            'taskPoleAmount.numeric' => 'The amount must be a number.',
-            'taskPoleAmount.min' => 'The amount must be at least 0.01.',
+            'depositAmount.required' => 'The amount field is required.',
+            'depositAmount.numeric' => 'The amount must be a number.',
+            'depositAmount.min' => 'The amount must be at least 0.01.',
         ]);
 
         try {
-            $lienAmount = $this->balance + ($this->taskPoleAmount * 100);
+            $lienAmount = $this->balance + ($this->depositAmount * 100);
             $lienAmount = strval($lienAmount);
             DB::transaction(function () use ($lienAmount) {
                 // Lock the user record
@@ -270,12 +266,11 @@ class UsersDetails extends Component
                     throw new \Exception('User not found');
                 }
 
-                $user->task_pole = $this->newTaskPole;
                 $user->lien_amount = $lienAmount;
                 $user->lien_status = 'on_hold';
                 $user->save();
             });
-            $this->dispatch('notify', message: 'Task pole set successfully', type: 'success');
+            $this->dispatch('notify', message: 'Deposit request sent successfully', type: 'success');
         } catch (\Exception $e) {
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
         }
@@ -400,7 +395,6 @@ class UsersDetails extends Component
 
             $user->lien_status = 'off_hold';
             $user->lien_amount = null;
-            $user->task_pole = 35;
             $user->save();
         });
 
@@ -418,7 +412,7 @@ class UsersDetails extends Component
         $this->dailyCommission = $user->daily_commission;
         $this->processingAmount = $user->processing_amount;
         $this->trainingBalance = $user->training_balance;
-        $this->taskPole = $user->task_pole;
+        $this->productsPerSet = $user->productsPerSet();
 
         $withdrawals = Withdrawal::with('user')
             ->where('user_id', $user->id)

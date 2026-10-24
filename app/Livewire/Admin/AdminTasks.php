@@ -187,7 +187,7 @@ class AdminTasks extends Component
         DB::transaction(function () use ($product): void {
             foreach (User::query()->where('is_admin', false)->whereKey($this->assignmentUserIds)->lockForUpdate()->get() as $user) {
                 $remainingCount = count($user->remainingWarehouseProducts($this->assignmentDay, $this->assignmentGroup));
-                if ($product && $this->premiumPosition > min($remainingCount + 1, $user->task_pole - $user->tasks_completed)) {
+                if ($product && $this->premiumPosition > min($remainingCount + 1, $user->productsPerSet() - $user->tasks_completed)) {
                     throw ValidationException::withMessages(['premiumPosition' => 'Position must fit within every selected user’s remaining tasks.']);
                 }
                 $user->update(['warehouse_groups' => [

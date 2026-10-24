@@ -15,7 +15,7 @@ it('delivers only unsubmitted products in the assigned level and group and disab
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'membership_level' => ucfirst($level), 'balance' => 100000, 'training_balance' => 0,
-        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0, 'task_pole' => 30,
+        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0,
     ]);
     MembershipLevel::create(['name' => ucfirst($level), 'percentage' => 0.5]);
     $first = WarehouseProduct::factory()->create(['level' => $level, 'day' => 3, 'group_key' => 'b', 'name' => 'First assigned product', 'price' => 31.20]);
@@ -75,7 +75,7 @@ it('preserves current tasks and exclusive priority when switching assigned group
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'membership_level' => 'Normal', 'balance' => 100000, 'training_balance' => 0,
-        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0, 'task_pole' => 30,
+        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0,
         'warehouse_groups' => ['normal' => ['day' => 1, 'group' => 'a']],
     ]);
     WarehouseProduct::factory()->create(['name' => 'Original group product', 'image_url' => '/original.jpg']);
@@ -102,7 +102,7 @@ it('preserves current tasks and exclusive priority when switching assigned group
 it('delivers a positioned premium after the preceding warehouse products', function () {
     $user = User::factory()->create([
         'membership_level' => 'Normal', 'balance' => 100000, 'training_balance' => 0,
-        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 4, 'task_pole' => 30,
+        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 4,
         'warehouse_groups' => ['normal' => ['day' => 1, 'group' => 'a']],
     ]);
     $regular = WarehouseProduct::factory()->create(['name' => 'Preceding regular product']);

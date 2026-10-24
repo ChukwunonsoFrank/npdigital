@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Models\MembershipLevel;
 use App\Models\PlatformSetting;
 use App\Models\UpgradeRequest;
+use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -30,7 +31,7 @@ class Activities extends Component
             'membershipChart' => $settings->membershipChart(),
             'membershipPerks' => $settings->membershipPerks(),
             'chartTerms' => [
-                'Every user is required to complete 2 sets a day to be entitled for this program.',
+                'Every user is required to complete '.User::DAILY_TASK_SETS.' sets a day to be entitled for this program.',
                 'Withdrawable incentives are to be credited to your account consecutively 3, 5, 15 & 30 days.',
                 'Do not hesitate to contact our online support for information.',
             ],

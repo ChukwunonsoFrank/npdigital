@@ -13,7 +13,7 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
     MembershipLevel::create([
-        'name' => 'VIP0',
+        'name' => 'Normal',
         'percentage' => 0.5,
     ]);
 });
@@ -22,10 +22,9 @@ test('admin is notified when user completes their 10th task', function () {
     Notification::fake();
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 9,
-        'task_pole' => 35,
         'total_commission' => 0,
         'processing_amount' => 0,
     ]);
@@ -60,10 +59,9 @@ test('admin is notified when user completes their 10th task from the record page
     Notification::fake();
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 9,
-        'task_pole' => 35,
         'total_commission' => 0,
         'processing_amount' => 0,
     ]);
@@ -96,10 +94,9 @@ test('admin is not notified when user has not reached 10 tasks', function () {
     Notification::fake();
 
     $user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 5,
-        'task_pole' => 35,
         'total_commission' => 0,
         'processing_amount' => 0,
     ]);

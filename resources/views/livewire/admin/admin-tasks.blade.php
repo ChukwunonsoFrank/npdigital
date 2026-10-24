@@ -81,7 +81,7 @@
                                         </span>
                                         <span class="flex shrink-0 flex-col items-end gap-1">
                                             <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white {{ $levelColor }}">{{ strtoupper($user->membership_level) }}</span>
-                                            <span class="text-[11px] font-bold text-amber-600">{{ $user->tasks_completed }}/{{ $user->task_pole }}</span>
+                                            <span class="text-[11px] font-bold text-amber-600">{{ $user->tasks_completed }}/{{ $user->productsPerSet() }}</span>
                                         </span>
                                     </button>
                             </div>

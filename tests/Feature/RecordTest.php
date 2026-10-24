@@ -10,12 +10,12 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
     $this->membershipLevel = MembershipLevel::create([
-        'name' => 'VIP0',
+        'name' => 'Normal',
         'percentage' => 0.5,
     ]);
 
     $this->user = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
         'daily_commission' => 0,
@@ -107,7 +107,7 @@ test('record page paginates completed tasks', function () {
 
 test('record page only shows tasks for the authenticated user', function () {
     $otherUser = User::factory()->create([
-        'membership_level' => 'VIP0',
+        'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
         'daily_commission' => 0,

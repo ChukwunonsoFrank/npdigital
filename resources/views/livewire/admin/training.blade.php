@@ -167,7 +167,6 @@ class extends Component {
                 'training_balance' => 0,
                 'has_made_first_deposit' => false,
                 'tasks_completed' => 0,
-                'task_pole' => 35,
                 'task_batch' => 0,
                 'daily_commission' => 0,
                 'total_commission' => 0,
