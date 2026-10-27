@@ -150,3 +150,20 @@ it('unlocks withdrawals only for an approved deposit of at least 100 dollars', f
     expect($user->fresh()->has_made_first_deposit)->toBe($unlocked)
         ->and((int) $user->fresh()->balance)->toBe(1_000 + $amount);
 })->with([[9_999, false], [10_000, true]]);
+
+it('reduces a user negative balance when a deposit is approved', function () {
+    Notification::fake();
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['balance' => 5000, 'negative_balance' => 3000]);
+    $deposit = $user->deposits()->create([
+        'amount' => 3000, 'cryptocurrency' => 'USDT-TRC20', 'status' => 'pending',
+    ]);
+
+    Livewire::actingAs($admin)->test(Payments::class)
+        ->call('review', 'Deposit', $deposit->id, true)
+        ->assertHasNoErrors();
+
+    expect((int) $user->fresh()->balance)->toBe(8000)
+        ->and((int) $user->fresh()->negative_balance)->toBe(0)
+        ->and($deposit->fresh()->status)->toBe('confirmed');
+});

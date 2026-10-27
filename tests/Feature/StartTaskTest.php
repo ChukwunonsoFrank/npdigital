@@ -42,22 +42,20 @@ test('start page displays user balance data', function () {
         ->assertSee('On Hold')
         ->assertSee('500.00')
         ->assertSee('0.00')
-        ->assertSee('START 0/30');
+        ->assertSee('0/3 sets completed today')
+        ->assertSee('START TASK');
 });
 
-test('start page sizes sets from the membership level product count', function (string $level, int $products) {
+test('start page shows a uniform set size for every membership level', function (string $level) {
     MembershipLevel::firstOrCreate(['name' => $level], ['percentage' => 0.5]);
     $this->user->update(['membership_level' => $level]);
 
     Livewire::actingAs($this->user->fresh())
         ->test(Start::class)
-        ->assertSee('START 0/'.$products);
-})->with([
-    ['Silver', 35],
-    ['Gold', 40],
-    ['Platinum', 45],
-    ['Diamond', 50],
-]);
+        ->assertSee('0/3 sets completed today')
+        ->assertSee('0 / 30 products')
+        ->assertSee('START TASK');
+})->with(['Silver', 'Gold', 'Platinum', 'Diamond', 'VVIP']);
 
 test('optimize page displays commission in USDT', function () {
     $completedTask = CompletedTask::create([
@@ -429,7 +427,7 @@ test('user in second task batch without first deposit is blocked from starting t
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertDispatched('task-limit-reached', message: 'You need to make your first deposit of $100 to continue with tasks.');
+        ->assertDispatched('task-limit-reached', message: 'Your free set is complete. Deposit an additional $100 to continue with the remaining sets of tasks.');
 });
 
 test('user who has made first deposit can continue later batches', function () {

@@ -19,12 +19,12 @@ it('seeds the membership tiers used by the upgrade dropdowns', function () {
     ]);
 });
 
-it('seeds VVIP with empty warehouse groups', function () {
+it('seeds VVIP with the uniform warehouse catalog', function () {
     $this->seed(MembershipLevelSeeder::class);
 
     expect(\App\Support\ProductWarehouse::levels())->toContain(['value' => 'vvip', 'label' => 'VVIP'])
-        ->and(\App\Support\ProductWarehouse::groupItems('vvip', 1, 'a'))->toBe([])
-        ->and(array_sum(\App\Support\ProductWarehouse::groupCounts('vvip')[1]))->toBe(0);
+        ->and(\App\Support\ProductWarehouse::groupItems('vvip', 1, 'a'))->toHaveCount(30)
+        ->and(array_sum(\App\Support\ProductWarehouse::groupCounts('vvip')[1]))->toBe(60);
 });
 
 it('does not duplicate or overwrite tiers that already exist', function () {

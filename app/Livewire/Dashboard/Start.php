@@ -58,7 +58,7 @@ class Start extends Component
         }
 
         if ($user->task_batch >= 1 && ! $user->has_made_first_deposit) {
-            $this->dispatch('task-limit-reached', message: 'You need to make your first deposit of $100 to continue with tasks.')->self();
+            $this->dispatch('task-limit-reached', message: 'Your free set is complete. Deposit an additional $100 to continue with the remaining sets of tasks.')->self();
 
             return;
         }
@@ -146,8 +146,13 @@ class Start extends Component
         }
 
         $taskCostInCents = (int) round((float) $task->cost * 100);
+        $isMerge = $task instanceof CompletedTask && $task->is_merge;
 
-        if ($activeTaskBalanceInCents < $taskCostInCents) {
+        if ($isMerge) {
+            $user->update([
+                'negative_balance' => max(0, $taskCostInCents - $activeTaskBalanceInCents),
+            ]);
+        } elseif ($activeTaskBalanceInCents < $taskCostInCents) {
             $this->dispatch('insufficient-balance', message: 'Insufficient balance to complete task. Top up to continue.')->self();
 
             return;
@@ -203,6 +208,8 @@ class Start extends Component
             'pendingTask' => $pendingTask,
             'commissionPercentage' => $commissionPercentage,
             'commission' => $commission,
+            'topUpAmount' => $pendingTask?->is_merge ? (int) $user->negative_balance : 0,
+            'setsCompleted' => min((int) $user->task_batch, User::DAILY_TASK_SETS),
         ]);
     }
 

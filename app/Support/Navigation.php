@@ -12,6 +12,7 @@ class Navigation
         return [
             ['label' => 'Home', 'route' => 'dashboard', 'icon' => 'layout-dashboard', 'active' => 'dashboard', 'mobile' => true],
             ['label' => 'Start Tasks', 'route' => 'dashboard.start', 'icon' => 'send', 'active' => 'dashboard.start*', 'mobile' => true],
+            ['label' => 'Bonus Center', 'route' => 'dashboard.bonus-center', 'icon' => 'gift', 'active' => 'dashboard.bonus-center*', 'mobile' => false],
             ['label' => 'Records', 'route' => 'dashboard.record', 'icon' => 'file-text', 'active' => 'dashboard.record*', 'mobile' => true],
             ['label' => 'Wallet', 'route' => 'dashboard.wallet', 'icon' => 'wallet', 'active' => ['dashboard.wallet*', 'dashboard.deposit*', 'dashboard.withdraw*'], 'mobile' => true],
             ['label' => 'Notifications', 'route' => 'dashboard.notifications', 'icon' => 'bell', 'active' => 'dashboard.notifications*', 'mobile' => false],
@@ -28,6 +29,8 @@ class Navigation
             ['label' => 'Overview', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => 'admin.dashboard'],
             ['label' => 'User Management', 'route' => 'admin.dashboard.users', 'icon' => 'users', 'active' => 'admin.dashboard.users*'],
             ['label' => 'Product Tasks', 'route' => 'admin.dashboard.tasks', 'icon' => 'film', 'active' => 'admin.dashboard.tasks*'],
+            ['label' => 'Merge Products', 'route' => 'admin.dashboard.merge-products', 'icon' => 'merge', 'active' => 'admin.dashboard.merge-products*'],
+            ['label' => 'Bonus Center', 'route' => 'admin.dashboard.bonus-center', 'icon' => 'gift', 'active' => 'admin.dashboard.bonus-center*'],
             ['label' => 'Product Warehouse', 'route' => 'admin.dashboard.warehouse', 'icon' => 'warehouse', 'active' => 'admin.dashboard.warehouse*'],
             ['label' => 'Training', 'route' => 'admin.training', 'icon' => 'graduation-cap', 'active' => 'admin.training'],
             ['label' => 'Payments', 'route' => 'admin.payments', 'icon' => 'credit-card', 'active' => 'admin.payments'],

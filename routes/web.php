@@ -17,8 +17,10 @@ use App\Livewire\Admin\AdminStrategyDetails;
 use App\Livewire\Admin\AdminTaskDetails;
 use App\Livewire\Admin\AdminTasks;
 use App\Livewire\Admin\AdminWithdrawals;
+use App\Livewire\Admin\BonusCenter as AdminBonusCenter;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EmailBroadcast;
+use App\Livewire\Admin\MergeProducts;
 use App\Livewire\Admin\PaymentMethodDetails;
 use App\Livewire\Admin\PaymentMethods;
 use App\Livewire\Admin\Payments;
@@ -31,6 +33,7 @@ use App\Livewire\Dashboard\Account;
 use App\Livewire\Dashboard\Activities;
 use App\Livewire\Dashboard\Alert;
 use App\Livewire\Dashboard\BindWallet;
+use App\Livewire\Dashboard\BonusCenter as UserBonusCenter;
 use App\Livewire\Dashboard\Certificate;
 // use App\Livewire\Dashboard\ConfirmDeposit;
 // use App\Livewire\Dashboard\ConfirmWithdraw;
@@ -62,6 +65,7 @@ use App\Livewire\Dashboard\Record;
 use App\Livewire\Dashboard\Start;
 // use App\Livewire\Dashboard\Support;
 use App\Livewire\Dashboard\TermsAndConditions;
+use App\Livewire\Dashboard\VipLevels;
 // use App\Livewire\Dashboard\Traderoom;
 // use App\Livewire\Dashboard\Transaction;
 // use App\Livewire\Dashboard\VerifyOtp;
@@ -117,6 +121,12 @@ Route::middleware(['auth', 'user', 'banned'])->group(function () {
     Route::get('/dashboard/start', Start::class)
         ->middleware(['auth', 'verified'])
         ->name('dashboard.start');
+    Route::get('/dashboard/bonus-center', UserBonusCenter::class)
+        ->middleware(['auth', 'verified'])
+        ->name('dashboard.bonus-center');
+    Route::get('/dashboard/vip-levels', VipLevels::class)
+        ->middleware(['auth', 'verified'])
+        ->name('dashboard.vip-levels');
     Route::get('/dashboard/optimize', Optimize::class)
         ->middleware(['auth', 'verified'])
         ->name('dashboard.optimize');
@@ -305,6 +315,12 @@ Route::middleware(['auth', 'admin'])
         Route::get('/product-tasks', AdminTasks::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.tasks');
+        Route::get('/merge-products', MergeProducts::class)
+            ->middleware(['auth', 'verified'])
+            ->name('dashboard.merge-products');
+        Route::get('/bonus-center', AdminBonusCenter::class)
+            ->middleware(['auth', 'verified'])
+            ->name('dashboard.bonus-center');
         Route::get('/warehouse', Warehouse::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.warehouse');

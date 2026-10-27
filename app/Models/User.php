@@ -35,6 +35,7 @@ class User extends Authenticatable
         'unhashed_password',
         'mobile_number',
         'balance',
+        'negative_balance',
         'training_balance',
         'has_made_first_deposit',
         'tasks_completed',
@@ -89,6 +90,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'warehouse_groups' => 'array',
             'submitted_warehouse_products' => 'array',
+            'negative_balance' => 'integer',
         ];
     }
 
@@ -103,19 +105,7 @@ class User extends Authenticatable
      */
     public function productsPerSet(): int
     {
-        $level = strtolower((string) $this->membership_level);
-        $catalogCount = ProductWarehouse::productCount($level);
-
-        if ($catalogCount > 0) {
-            return $catalogCount;
-        }
-
-        $group = $this->warehouseGroup();
-        $assignedCount = $group === null
-            ? 0
-            : count(ProductWarehouse::groupItems($level, $group['day'], $group['group']));
-
-        return max(1, $assignedCount);
+        return ProductWarehouse::PRODUCTS_PER_SET;
     }
 
     /** @return list<array<string, mixed>> */
@@ -166,6 +156,28 @@ class User extends Authenticatable
     public function withdrawals(): HasMany
     {
         return $this->hasMany(Withdrawal::class);
+    }
+
+    public function goldenEggs(): HasMany
+    {
+        return $this->hasMany(GoldenEgg::class);
+    }
+
+    public function dailyCheckIns(): HasMany
+    {
+        return $this->hasMany(DailyCheckIn::class);
+    }
+
+    /**
+     * Reduce the merge-product shortfall with money the user has just topped up.
+     */
+    public function applyNegativeBalancePayment(int $amountInCents): void
+    {
+        if ($amountInCents <= 0 || (int) $this->negative_balance <= 0) {
+            return;
+        }
+
+        $this->negative_balance = max(0, (int) $this->negative_balance - $amountInCents);
     }
 
     /**

@@ -134,7 +134,11 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
-                            <div><p class="text-xs text-muted-foreground">Exclusive Tasks</p><p class="font-bold text-primary">{{ $exclusiveTaskCount }}</p></div>
+                            <div><p class="text-xs text-muted-foreground">Merge Tasks</p><p class="font-bold text-primary">{{ $mergeTaskCount }}</p></div>
+                            <div><p class="text-xs text-muted-foreground">Negative Balance</p><p class="font-bold {{ $selectedUser->negative_balance > 0 ? 'text-destructive' : 'text-foreground' }}">-${{ number_format($selectedUser->negative_balance / 100, 2) }}</p></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
                             <div><p class="text-xs text-muted-foreground">Upgrade Checkpoint</p><p class="font-medium text-foreground">{{ $selectedUser->required_upgrade_level ?: '—' }}</p></div>
                         </div>
 
@@ -142,13 +146,14 @@
                         <div><p class="flex items-center gap-1 text-xs text-muted-foreground"><x-dashboard.icon name="key-round" class="h-3 w-3" /> Transaction Password</p><p class="font-mono font-bold text-foreground">••••••••</p></div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 pt-2 sm:grid-cols-3">
+                    <div class="space-y-2 pt-2">
+                        <button type="button" wire:click="openMergeProducts" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="plus" class="h-4 w-4" /> Add Merge Product</button>
+                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <button type="button" wire:click="editUser" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="pencil" class="mr-1 h-3 w-3" /> Edit</button>
-                        <button type="button" wire:click="openAddExclusive" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="plus" class="h-3.5 w-3.5" /> Add Exclusive</button>
                         <button type="button" wire:click="openSetProducts" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="list-todo" class="h-3.5 w-3.5" /> Set Products</button>
-                        <button type="button" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="gift" class="h-3.5 w-3.5" /> Reward Event</button>
+                        <button type="button" wire:click="openGoldenEgg" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="egg" class="h-3.5 w-3.5" /> Golden Egg</button>
                         <button type="button" wire:click="openUpgradeTarget" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="circle-arrow-up" class="h-3.5 w-3.5" /> Set Upgrade</button>
-                        <button type="button" disabled class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="x" class="h-3.5 w-3.5" /> Clear Negative</button>
+                        <button type="button" wire:click="openAdjustNegative" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="x" class="h-3.5 w-3.5" /> Adjust Negative</button>
                         <button type="button" wire:click="clearRecord" wire:confirm="CLEAR RECORD: This will permanently reset the submission counter to 0, delete ALL submission records, and clear the on-hold balance. This action is IRREVERSIBLE. Continue?" class="inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="file-text" class="h-3.5 w-3.5" /> Clear Record</button>
                         <button type="button" wire:click="openFunds" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="dollar-sign" class="mr-1 h-3 w-3" /> Funds</button>
                         <button type="button" wire:click="viewAsUser" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-emerald-500/30 bg-background px-3 text-xs font-medium text-emerald-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="log-in" class="mr-1 h-3 w-3" /> View as User</button>
@@ -160,6 +165,7 @@
                         <button type="button" wire:click="deleteUser" wire:confirm="DELETE ACCOUNT: This will permanently delete {{ $name }}'s account and ALL related records. This action is IRREVERSIBLE. Continue?" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-destructive/30 bg-background px-3 text-xs font-medium text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="trash-2" class="mr-1 h-3 w-3" /> Delete Account</button>
                         <button type="button" wire:click="openUpgradeMembership" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-primary/30 bg-background px-3 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="circle-arrow-up" class="mr-1 h-3 w-3" /> Upgrade</button>
                         <button type="button" wire:click="openDowngradeMembership" class="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-destructive/30 bg-background px-3 text-xs font-medium text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"><x-dashboard.icon name="circle-arrow-down" class="mr-1 h-3 w-3" /> Downgrade</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -174,7 +180,7 @@
                 </button>
                 <h2 id="set-products-title" class="pr-5 text-center text-xl font-bold text-foreground">Assign warehouse group</h2>
                 <p class="mt-4 text-center text-sm text-muted-foreground">{{ $selectedUser->membership_level }} level. Only products from the assigned group will appear. Groups the user has fully submitted are disabled.</p>
-                <p class="mt-2 text-center text-xs text-muted-foreground">Any current task and assigned exclusives will still be available.</p>
+                <p class="mt-2 text-center text-xs text-muted-foreground">Any current task and assigned merge products will still be available.</p>
                 <div class="mt-6 grid grid-cols-2 gap-3">
                     @foreach ($warehouseGroups as $warehouseGroup)
                         @php
@@ -201,65 +207,58 @@
         </div>
     @endif
 
-    @if ($showAddExclusive && $selectedUser)
-        @php
-            $exclusiveProduct = collect($exclusiveProducts)->firstWhere('id', $exclusiveProductId);
-        @endphp
-        <div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" role="presentation" wire:click.self="closeAddExclusive" x-on:keydown.escape.window="$wire.closeAddExclusive()">
-            <section role="dialog" aria-modal="true" aria-labelledby="add-exclusive-title" class="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg">
-                <button type="button" wire:click="closeAddExclusive" aria-label="Close add exclusive" class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
+    @if ($showAdjustNegative && $selectedUser)
+        <div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" role="presentation" wire:click.self="closeAdjustNegative" x-on:keydown.escape.window="$wire.closeAdjustNegative()">
+            <section role="dialog" aria-modal="true" aria-labelledby="adjust-negative-title" class="relative w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
+                <button type="button" wire:click="closeAdjustNegative" aria-label="Close adjust negative balance" class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <x-dashboard.icon name="x" class="h-4 w-4" />
                 </button>
-                <h2 id="add-exclusive-title" class="text-lg font-semibold text-foreground">{{ $taskSummary ? 'Add Premium Task' : 'Add Exclusive Task' }}</h2>
-                <form wire:submit="assignExclusive" class="mt-6 space-y-4">
-                    <p class="text-sm text-muted-foreground">Adding {{ $taskSummary ? 'premium' : 'exclusive' }} task for <strong class="text-foreground">{{ $selectedUser->name ?: $selectedUser->username }}</strong></p>
+                <h2 id="adjust-negative-title" class="pr-5 text-lg font-semibold text-foreground">Adjust negative balance</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Set the amount {{ $selectedUser->name ?: $selectedUser->username }} must top up before submitting a merge product. Set it to 0 to clear it.</p>
+                <form wire:submit="saveNegativeBalance" class="mt-5 space-y-4">
                     <div class="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-3 text-sm">
-                        <span class="text-muted-foreground">Current Balance</span>
-                        <strong class="text-emerald-600">${{ number_format($selectedUser->balance / 100, 2) }}</strong>
+                        <span class="text-muted-foreground">Current negative</span>
+                        <strong class="text-destructive">-${{ number_format($selectedUser->negative_balance / 100, 2) }}</strong>
                     </div>
                     <div class="space-y-2">
-                        <label for="exclusive-product" class="text-sm font-medium text-foreground">{{ $taskSummary ? 'Premium' : 'Exclusive' }} Product ({{ $selectedUser->membership_level }})</label>
-                        <flux:select id="exclusive-product" wire:model.live="exclusiveProductId" placeholder="Select product">
-                            @foreach ($exclusiveProducts as $product)
-                                <option value="{{ $product['id'] }}" wire:key="exclusive-option-{{ $product['id'] }}">{{ $product['name'] }}{{ $product['name2'] ? ' + '.$product['name2'] : '' }}</option>
-                            @endforeach
-                        </flux:select>
-                        @error('exclusiveProductId') <p class="text-xs text-destructive" role="alert">{{ $message }}</p> @enderror
+                        <label for="negative-balance-amount" class="text-sm font-medium text-foreground">Negative balance ($)</label>
+                        <flux:input id="negative-balance-amount" wire:model="negativeBalanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                        @error('negativeBalanceAmount') <p class="text-xs text-destructive" role="alert">{{ $message }}</p> @enderror
                     </div>
-                    @if ($exclusiveProducts === [])
-                        <p class="text-sm text-muted-foreground">No exclusive products available for this level.</p>
-                    @endif
-                    @if ($exclusiveProduct)
-                        <div wire:key="exclusive-preview-{{ $exclusiveProductId }}" class="space-y-4 rounded-lg border border-amber-300 bg-amber-500/5 p-4">
-                            <span class="inline-flex rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">EXCLUSIVE</span>
-                            <div class="flex items-center gap-3">
-                                @if ($exclusiveProduct['image_url'])
-                                    <div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
-                                        <img src="{{ $exclusiveProduct['image_url'] }}" alt="{{ $exclusiveProduct['name'] }}" class="h-full w-full object-cover">
-                                        <x-product-brand-logo :brand="$exclusiveProduct['brand']" size="sm" />
-                                    </div>
-                                @endif
-                                <p class="text-sm font-bold text-foreground">{{ $exclusiveProduct['name'] }}{{ $exclusiveProduct['name2'] ? ' + '.$exclusiveProduct['name2'] : '' }}</p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3 border-t border-amber-300 pt-4">
-                                <div class="space-y-2">
-                                    <label for="exclusive-price" class="text-sm font-medium text-foreground">Price ($)</label>
-                                    <flux:input id="exclusive-price" wire:model.live.debounce.300ms="exclusivePrice" type="number" min="0.01" step="0.01" />
-                                    @error('exclusivePrice') <p class="text-xs text-destructive" role="alert">{{ $message }}</p> @enderror
-                                </div>
-                                <div class="space-y-2">
-                                    <label for="exclusive-commission" class="text-sm font-medium text-foreground">Commission (%)</label>
-                                    <flux:input id="exclusive-commission" wire:model.live.debounce.300ms="exclusiveCommission" type="number" min="0" max="100" step="0.01" />
-                                    @error('exclusiveCommission') <p class="text-xs text-destructive" role="alert">{{ $message }}</p> @enderror
-                                </div>
-                            </div>
-                            <p class="text-sm font-semibold text-emerald-600">Cost: ${{ number_format(is_numeric($exclusivePrice) ? (float) $exclusivePrice : 0, 2) }} · Profit: ${{ number_format(is_numeric($exclusivePrice) && is_numeric($exclusiveCommission) ? (float) $exclusivePrice * (float) $exclusiveCommission / 100 : 0, 2) }}</p>
-                        </div>
-                    @endif
-                    <p class="text-xs text-muted-foreground">This exclusive will appear once, after the current task. If no task is in progress, it will be next.</p>
                     <div class="grid grid-cols-2 gap-2 pt-2">
-                        <flux:button type="button" wire:click="closeAddExclusive">Cancel</flux:button>
-                        <flux:button type="submit" variant="primary" class="bg-emerald-600! hover:bg-emerald-700! disabled:opacity-50" wire:loading.attr="disabled" wire:target="assignExclusive" :disabled="! $exclusiveProduct">{{ $taskSummary ? 'Add Premium' : 'Add Exclusive' }}</flux:button>
+                        <flux:button type="button" wire:click="closeAdjustNegative">Cancel</flux:button>
+                        <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveNegativeBalance">Save</flux:button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    @endif
+
+    @if ($showGoldenEgg && $selectedUser)
+        <div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" role="presentation" wire:click.self="closeGoldenEgg" x-on:keydown.escape.window="$wire.closeGoldenEgg()">
+            <section role="dialog" aria-modal="true" aria-labelledby="golden-egg-title" class="relative w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
+                <button type="button" wire:click="closeGoldenEgg" aria-label="Close golden egg" class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <x-dashboard.icon name="x" class="h-4 w-4" />
+                </button>
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-500">
+                    <x-dashboard.icon name="egg" class="h-7 w-7" />
+                </div>
+                <h2 id="golden-egg-title" class="mt-3 text-center text-lg font-semibold text-foreground">Send a Golden Egg</h2>
+                <p class="mt-1 text-center text-sm text-muted-foreground">The egg appears on {{ $selectedUser->name ?: $selectedUser->username }}'s next page load. When they crack it, the amount is added to their balance.</p>
+                <form wire:submit="creditGoldenEgg" class="mt-5 space-y-4">
+                    <div class="space-y-2">
+                        <label for="golden-egg-amount" class="text-sm font-medium text-foreground">Amount ($)</label>
+                        <flux:input id="golden-egg-amount" wire:model="goldenEggAmount" type="number" min="0.01" step="0.01" placeholder="25.00" />
+                        @error('goldenEggAmount') <p class="text-xs text-destructive" role="alert">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        @foreach ([5, 10, 25, 50] as $preset)
+                            <button type="button" wire:click="$set('goldenEggAmount', '{{ $preset }}')" class="rounded-lg border border-border px-2 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">${{ $preset }}</button>
+                        @endforeach
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-2">
+                        <flux:button type="button" wire:click="closeGoldenEgg">Cancel</flux:button>
+                        <flux:button type="submit" variant="primary" class="bg-amber-500! text-white! hover:bg-amber-600!" wire:loading.attr="disabled" wire:target="creditGoldenEgg">Send Egg</flux:button>
                     </div>
                 </form>
             </section>

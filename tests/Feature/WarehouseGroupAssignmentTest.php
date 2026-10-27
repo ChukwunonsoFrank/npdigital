@@ -137,17 +137,21 @@ it('keeps assignments separate by level and does not consume unaffordable produc
     expect($user->tasks()->sole()->warehouse_product_id)->toBe($product->product_id);
 });
 
-it('rejects invalid or empty groups', function (int $day, string $group, bool $invalid) {
+it('validates group coordinates and assigns a populated group', function (int $day, string $group, bool $invalid) {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['membership_level' => 'Normal']);
     $component = Livewire::actingAs($admin)->test(Users::class)
         ->call('showUserDetails', $user->id)->call('openSetProducts')->call('assignWarehouseGroup', $day, $group);
+
     if ($invalid) {
         $component->assertStatus(422);
-    } else {
-        $component->assertHasErrors(['warehouseGroup']);
+        expect($user->fresh()->warehouse_groups)->toBeNull();
+
+        return;
     }
-    expect($user->fresh()->warehouse_groups)->toBeNull();
+
+    $component->assertHasNoErrors();
+    expect($user->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'a']);
 })->with([[0, 'a', true], [6, 'b', true], [1, 'c', true], [1, 'a', false]]);
 
 it('forbids non admins from opening or assigning warehouse groups', function () {

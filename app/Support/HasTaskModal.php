@@ -65,6 +65,15 @@ trait HasTaskModal
             return;
         }
 
+        if ($task->is_merge && (int) auth()->user()->negative_balance > 0) {
+            $this->dispatch(
+                'insufficient-balance',
+                message: 'Top up $'.number_format(auth()->user()->negative_balance / 100, 2).' to submit this merge product.',
+            )->self();
+
+            return;
+        }
+
         $this->completeTask(auth()->user(), $task, $this->rating, $this->review);
 
         session()->forget('task_completed');

@@ -52,10 +52,10 @@ class Activities extends Component
     {
         $levels = [
             ['name' => 'Normal', 'image' => 'assets/img/normal.png', 'border' => 'hsl(210 50% 30%)', 'percentage' => '0.50', 'tasks' => 30, 'target' => null],
-            ['name' => 'Silver', 'image' => 'assets/img/silver.png', 'border' => 'hsl(0 0% 40%)', 'percentage' => '0.75', 'tasks' => 35, 'target' => 399, 'accent' => 'hsl(0 0% 35%)', 'accent_border' => 'hsl(0 0% 50%)'],
-            ['name' => 'Gold', 'image' => 'assets/img/gold.png', 'border' => 'hsl(35 80% 45%)', 'percentage' => '1.00', 'tasks' => 40, 'target' => 999, 'accent' => 'hsl(35 85% 45%)', 'accent_border' => 'hsl(35 85% 55%)'],
-            ['name' => 'Platinum', 'image' => 'assets/img/platinum.png', 'border' => 'hsl(145 40% 35%)', 'percentage' => '1.25', 'tasks' => 45, 'target' => 3999, 'accent' => 'hsl(145 55% 38%)', 'accent_border' => 'hsl(145 55% 48%)'],
-            ['name' => 'Diamond', 'image' => 'assets/img/diamond.png', 'border' => 'hsl(210 70% 45%)', 'percentage' => '1.50', 'tasks' => 50, 'target' => 7999, 'accent' => 'hsl(210 75% 45%)', 'accent_border' => 'hsl(210 75% 55%)'],
+            ['name' => 'Silver', 'image' => 'assets/img/silver.png', 'border' => 'hsl(0 0% 40%)', 'percentage' => '0.75', 'tasks' => 30, 'target' => 399, 'accent' => 'hsl(0 0% 35%)', 'accent_border' => 'hsl(0 0% 50%)'],
+            ['name' => 'Gold', 'image' => 'assets/img/gold.png', 'border' => 'hsl(35 80% 45%)', 'percentage' => '1.00', 'tasks' => 30, 'target' => 999, 'accent' => 'hsl(35 85% 45%)', 'accent_border' => 'hsl(35 85% 55%)'],
+            ['name' => 'Platinum', 'image' => 'assets/img/platinum.png', 'border' => 'hsl(145 40% 35%)', 'percentage' => '1.25', 'tasks' => 30, 'target' => 3999, 'accent' => 'hsl(145 55% 38%)', 'accent_border' => 'hsl(145 55% 48%)'],
+            ['name' => 'Diamond', 'image' => 'assets/img/diamond.png', 'border' => 'hsl(210 70% 45%)', 'percentage' => '1.50', 'tasks' => 30, 'target' => 7999, 'accent' => 'hsl(210 75% 45%)', 'accent_border' => 'hsl(210 75% 55%)'],
         ];
 
         $configuredLevels = MembershipLevel::query()->get()->keyBy('name');

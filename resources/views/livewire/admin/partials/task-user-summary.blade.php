@@ -22,7 +22,7 @@
     <section role="dialog" aria-modal="true" aria-labelledby="task-user-title"
         class="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg">
         <button type="button" wire:click="closeUserDetails" aria-label="Close user details"
-            class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground transition-opacity hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <x-dashboard.icon name="x" class="h-4 w-4" />
         </button>
 
@@ -46,18 +46,28 @@
                 <p class="text-xs">Total Submitted</p>
                 <p class="text-lg font-bold">{{ $selectedUser->tasks_completed }} / {{ $selectedUser->productsPerSet() }}</p>
             </div>
-            <div class="space-y-1 rounded-xl bg-amber-50 p-3 text-orange-600 dark:bg-amber-950 dark:text-orange-300">
-                <p class="text-xs">Premium Tasks</p>
-                <p class="text-lg font-bold">{{ $exclusiveTaskCount }}</p>
+            <div class="space-y-1 rounded-xl bg-primary/5 p-3 text-primary">
+                <p class="text-xs">Merge Tasks</p>
+                <p class="text-lg font-bold">{{ $mergeTaskCount }}</p>
             </div>
         </div>
 
+        @if ($selectedUser->negative_balance > 0)
+            <div class="mt-3 flex items-center justify-between rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+                <span class="text-xs font-semibold uppercase tracking-wide text-destructive">Negative balance</span>
+                <span class="font-display text-lg font-bold text-destructive">-${{ number_format($selectedUser->negative_balance / 100, 2) }}</span>
+            </div>
+        @endif
+
         <div class="mt-4 flex flex-wrap gap-1.5">
-            <button type="button" wire:click="openAddExclusive" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-green-600 px-3 text-xs font-medium text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <x-dashboard.icon name="plus" class="h-4 w-4" /> Add Premium
+            <button type="button" wire:click="openMergeProducts" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <x-dashboard.icon name="merge" class="h-4 w-4" /> Add Merge Product
             </button>
-            <button type="button" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-amber-500 px-3 text-xs font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <x-dashboard.icon name="x" class="h-4 w-4" /> Clear Negative
+            <button type="button" wire:click="openGoldenEgg" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-amber-500 px-3 text-xs font-medium text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <x-dashboard.icon name="egg" class="h-4 w-4" /> Golden Egg
+            </button>
+            <button type="button" wire:click="openAdjustNegative" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <x-dashboard.icon name="x" class="h-4 w-4" /> Adjust Negative
             </button>
             <button type="button" wire:click="clearRecord" wire:confirm="CLEAR RECORD: This will permanently reset the submission counter to 0, delete ALL submission records, and clear the on-hold balance. This action is IRREVERSIBLE. Continue?" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-blue-500 px-3 text-xs font-medium text-white hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <x-dashboard.icon name="file-text" class="h-4 w-4" /> Clear Record

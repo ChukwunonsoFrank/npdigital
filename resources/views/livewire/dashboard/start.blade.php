@@ -78,6 +78,36 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-2 gap-3">
+            <a href="{{ route('dashboard.bonus-center') }}" wire:navigate
+                class="group flex min-h-[96px] flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <div class="flex items-start justify-between gap-2">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
+                        <x-dashboard.icon name="gift" class="h-4 w-4" />
+                    </span>
+                    <x-dashboard.icon name="arrow-up-right" class="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </div>
+                <div class="mt-3">
+                    <p class="font-display text-sm font-bold text-foreground">Bonus Center</p>
+                    <p class="text-[11px] text-muted-foreground">Daily sign-in rewards</p>
+                </div>
+            </a>
+
+            <a href="{{ route('dashboard.vip-levels') }}" wire:navigate
+                class="group flex min-h-[96px] flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <div class="flex items-start justify-between gap-2">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <x-dashboard.icon name="crown" class="h-4 w-4" />
+                    </span>
+                    <x-dashboard.icon name="arrow-up-right" class="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </div>
+                <div class="mt-3">
+                    <p class="font-display text-sm font-bold text-foreground">VIP Levels</p>
+                    <p class="text-[11px] text-muted-foreground">{{ $user->membership_level ?? 'Normal' }} · View all levels</p>
+                </div>
+            </a>
+        </div>
+
         <div>
             <h3 class="mb-3 font-display text-base font-semibold">Top Rated &amp; Best Selling Products</h3>
             <div class="overflow-hidden rounded-xl border bg-card py-4">
@@ -120,10 +150,55 @@
             </div>
         </div>
 
-        <div class="flex justify-center">
-            <button type="button" wire:click="startTask"
-                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-8 py-3 font-display text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90">
-                START {{ $user->tasks_completed ?? 0 }}/{{ $user->productsPerSet() }}
+        @php
+            $setProgress = $user->productsPerSet() > 0 ? min(100, (int) floor(($user->tasks_completed ?? 0) / $user->productsPerSet() * 100)) : 0;
+            $dailyComplete = $setsCompleted >= \App\Models\User::DAILY_TASK_SETS;
+        @endphp
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-display text-sm font-bold text-foreground">Daily progress</h3>
+                    <p class="text-[11px] text-muted-foreground">{{ $setsCompleted }}/{{ \App\Models\User::DAILY_TASK_SETS }} sets completed today</p>
+                </div>
+                <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+                    <x-dashboard.icon name="clock" class="h-3 w-3" /> Resets daily
+                </span>
+            </div>
+
+            <div class="mt-4 grid grid-cols-3 gap-2">
+                @for ($set = 1; $set <= \App\Models\User::DAILY_TASK_SETS; $set++)
+                    @php
+                        $isDone = $set <= $setsCompleted;
+                        $isCurrent = $set === $setsCompleted + 1;
+                    @endphp
+                    <div>
+                        <div class="h-2 overflow-hidden rounded-full bg-muted">
+                            <div @class(['h-full rounded-full bg-primary transition-all', 'bg-primary/60' => $isCurrent && ! $isDone]) style="width: {{ $isDone ? 100 : ($isCurrent ? $setProgress : 0) }}%"></div>
+                        </div>
+                        <p @class(['mt-1.5 flex items-center gap-1 text-[10px] font-semibold', 'text-primary' => $isDone || $isCurrent, 'text-muted-foreground' => ! $isDone && ! $isCurrent])>
+                            @if ($isDone)
+                                <x-dashboard.icon name="check" class="h-3 w-3" />
+                            @endif
+                            Set {{ $set }}
+                        </p>
+                    </div>
+                @endfor
+            </div>
+
+            @if (! $dailyComplete)
+                <div class="mt-4 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+                    <span class="text-xs text-muted-foreground">Set {{ $setsCompleted + 1 }}</span>
+                    <span class="text-xs font-bold text-foreground">{{ $user->tasks_completed ?? 0 }} / {{ $user->productsPerSet() }} products</span>
+                </div>
+            @endif
+
+            <button type="button" wire:click="startTask" @disabled($dailyComplete)
+                class="mt-4 inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-8 py-3 font-display text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+                @if ($dailyComplete)
+                    Daily limit reached
+                @else
+                    START TASK
+                @endif
             </button>
         </div>
 
@@ -140,7 +215,8 @@
     </div>
 
     <x-dashboard.task-modal :pending-task="$pendingTask" :commission="$commission"
-        :commission-percentage="$commissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert" />
+        :commission-percentage="$commissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert"
+        :top-up-amount="$topUpAmount" />
 </div>
 
 <script>

@@ -2,9 +2,7 @@
 
 use App\Livewire\Admin\AdminTasks;
 use App\Livewire\Admin\Users;
-use App\Models\CompletedTask;
 use App\Models\User;
-use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -49,7 +47,7 @@ it('shows assigned and unassigned members in their account columns and searches 
     Livewire::actingAs($admin)->test(AdminTasks::class)
         ->assertSeeInOrder(['Real Accounts', 'Real Member', 'Previous Level Only', 'Not assigned', 'Virtual Accounts', 'Virtual Member', 'Unassigned Virtual', 'Not assigned'])
         ->assertDontSee($admin->username)
-        ->assertSee('Day 2 B')->assertSee('6/40')
+        ->assertSee('Day 2 B')->assertSee('6/30')
         ->assertViewHas('realCount', 2)->assertViewHas('virtualCount', 2)
         ->set('search', 'real-search')->assertSee('Real Member')->assertDontSee('Virtual Member')
         ->assertSee('REAL')->assertDontSee('VIRTUAL')->assertViewHas('realCount', 1)
@@ -108,8 +106,8 @@ it('creates and edits warehouse assignments without losing other levels or task 
         ->call('openAssignment')->set('assignmentUserIds', [(string) $user->id])->call('nextAssignmentStep')
         ->set('assignmentSelection', '2-b')->call('nextAssignmentStep')->call('saveAssignment')
         ->assertHasNoErrors()->assertSet('showAssignmentModal', false)->assertSee('Assigned Member')
-        ->assertDispatched('toast', message: 'Products assigned successfully.')
-        ->assertDontSee('Products assigned successfully.')
+        ->assertDispatched('toast', message: 'Warehouse group assigned successfully.')
+        ->assertDontSee('Warehouse group assigned successfully.')
         ->call('openAssignment', $user->id)->assertSet('assignmentDay', 2)->assertSet('assignmentGroup', 'b');
 
     expect($user->fresh()->warehouse_groups)->toBe([
@@ -135,41 +133,27 @@ it('rejects invalid users, days, groups and empty or exhausted assignments', fun
     expect($user->fresh()->warehouseGroup())->toBeNull();
 });
 
-it('opens the task account summary and reuses the premium task flow for either account type', function (bool $isTraining) {
+it('opens the task account summary and links to the merge product builder for either account type', function (bool $isTraining) {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'is_admin' => false, 'is_training' => $isTraining, 'name' => 'Task Member',
-        'membership_level' => 'Gold', 'balance' => 110321,
+        'membership_level' => 'Gold', 'balance' => 110321, 'negative_balance' => 5000,
         'lien_status' => 'on_hold', 'lien_amount' => 4321,
         'tasks_completed' => 5,
     ]);
-    $product = WarehouseExclusiveProduct::factory()->create([
-        'level' => 'gold', 'name' => 'Gold Premium', 'name2' => null, 'price' => 35, 'price2' => null,
-    ]);
-    WarehouseExclusiveProduct::factory()->create(['level' => 'diamond', 'name' => 'Wrong Level']);
 
-    $component = Livewire::actingAs($admin)->test(Users::class, ['taskSummary' => true])
+    Livewire::actingAs($admin)->test(Users::class, ['taskSummary' => true])
         ->assertDontSee('User Management')->assertDontSee('role="dialog"', false)
         ->dispatch('show-task-user', userId: $user->id)
         ->assertSee($isTraining ? 'Virtual/Training' : 'Real Account')
-        ->assertSee('VIP Level 3')->assertSee('$1,103.21')->assertSee('$43.21')->assertSee('5 / 40')
-        ->assertSee('Premium Tasks')->assertSee('Clear Negative')
-        ->call('openAddExclusive')->assertSee('Add Premium Task')
-        ->assertSee('Gold Premium')->assertDontSee('Wrong Level')
-        ->set('exclusiveProductId', $product->exclusive_id)
-        ->set('exclusivePrice', '43.20')->set('exclusiveCommission', '7.5')
-        ->call('assignExclusive')->assertHasNoErrors()
-        ->assertSet('showAddExclusive', false)->assertSet('selectedUserId', $user->id);
+        ->assertSee('VIP Level 3')->assertSee('$1,103.21')->assertSee('$43.21')->assertSee('5 / 30')
+        ->assertSee('Merge Tasks')->assertSee('-$50.00')->assertSee('Add Merge Product')
+        ->assertDontSee('Premium Tasks')
+        ->call('openMergeProducts')
+        ->assertRedirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
 
-    $task = CompletedTask::query()->where('user_id', $user->id)->sole();
-    expect($task->title)->toBe('Gold Premium')
-        ->and($task->cost)->toBe('43.20')
-        ->and((float) $task->commission_percentage)->toBe(7.5)
-        ->and($task->brand)->toBe($product->brand)
-        ->and($task->status)->toBe('queued');
-
-    $component->call('openAddExclusive')->call('closeAddExclusive')
-        ->assertSet('selectedUserId', $user->id)
+    Livewire::actingAs($admin)->test(Users::class, ['taskSummary' => true])
+        ->dispatch('show-task-user', userId: $user->id)
         ->call('closeUserDetails')->assertDontSee('role="dialog"', false)
         ->dispatch('show-task-user', userId: $admin->id)->assertSet('selectedUserId', null);
 })->with([false, true]);
@@ -181,12 +165,11 @@ it('rejects non admins opening a task account summary', function () {
         ->assertForbidden();
 });
 
-it('assigns a customized premium combo to multiple accounts through all three steps', function () {
+it('assigns warehouse groups to multiple accounts through both steps', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $real = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal', 'tasks_completed' => 3, 'balance' => 12345, 'referral_code' => 'find-real']);
     $virtual = User::factory()->create(['is_admin' => false, 'is_training' => true, 'membership_level' => 'Normal', 'tasks_completed' => 6]);
     WarehouseProduct::factory()->count(3)->create(['day' => 2, 'group_key' => 'b']);
-    $premium = WarehouseExclusiveProduct::factory()->create(['name' => 'Tea Sampler', 'name2' => 'Kitchen Set', 'price' => 35, 'price2' => 42]);
 
     $component = Livewire::actingAs($admin)->test(AdminTasks::class)->call('openAssignment')
         ->assertSee('Step 1: Select Users')->call('nextAssignmentStep')->assertHasErrors('assignmentUserIds')
@@ -194,45 +177,31 @@ it('assigns a customized premium combo to multiple accounts through all three st
         ->set('assignmentUserIds', [(string) $real->id, (string) $virtual->id])->assertSee('$123.45')
         ->call('nextAssignmentStep')->assertSee('Step 2: Select Group')
         ->call('nextAssignmentStep')->assertHasErrors('assignmentSelection')
-        ->set('assignmentSelection', '2-b')->call('nextAssignmentStep')->assertSee('Step 3: Premium Product (Optional)')
-        ->set('addPremium', true)->set('premiumProductId', $premium->exclusive_id)
-        ->assertSet('premiumPrice', '35')->assertSet('premiumPrice2', '42')
-        ->set('premiumPrice', '41.25')->set('premiumPrice2', '19.75')->set('premiumCommission', '7.5')->set('premiumPosition', 3)
-        ->assertSee('Combined: $61.00')->assertSee('Total Profit: $4.58')
-        ->call('previousAssignmentStep')->assertSee('Day 2 B')->call('nextAssignmentStep')
-        ->call('saveAssignment')->assertHasNoErrors()->assertSet('showAssignmentModal', false);
+        ->set('assignmentSelection', '2-b')->call('saveAssignment')
+        ->assertHasNoErrors()->assertSet('showAssignmentModal', false)
+        ->assertDispatched('toast', message: 'Warehouse group assigned successfully.');
 
     foreach ([$real, $virtual] as $user) {
-        expect($user->fresh()->warehouseGroup())->toBe(['day' => 2, 'group' => 'b']);
-        $task = $user->tasks()->sole();
-        expect($task->title)->toBe('Tea Sampler + Kitchen Set')->and($task->cost)->toBe('61.00')
-            ->and((float) $task->commission_percentage)->toBe(7.5)
-            ->and((int) $task->available_after_tasks)->toBe($user->tasks_completed + 2)
-            ->and($task->brand)->toBe($premium->brand);
+        expect($user->fresh()->warehouseGroup())->toBe(['day' => 2, 'group' => 'b'])
+            ->and($user->fresh()->tasks()->count())->toBe(0);
     }
 
-    $component->call('openAssignment')->assertSet('assignmentUserIds', [])->assertSet('addPremium', false)->assertSet('assignmentStep', 1);
+    $component->call('openAssignment')->assertSet('assignmentUserIds', [])->assertSet('assignmentStep', 1);
 });
 
-it('rejects mixed levels and invalid premium customization without partially assigning users', function () {
+it('rejects mixed levels and invalid groups without partially assigning users', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $first = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal', 'tasks_completed' => 0]);
-    $second = User::factory()->create(['is_admin' => false, 'membership_level' => 'Gold', 'tasks_completed' => 39]);
+    $second = User::factory()->create(['is_admin' => false, 'membership_level' => 'Gold', 'tasks_completed' => 20]);
     WarehouseProduct::factory()->count(3)->create();
-    $premium = WarehouseExclusiveProduct::factory()->create();
-    $wrongLevel = WarehouseExclusiveProduct::factory()->create(['level' => 'gold']);
 
     $component = Livewire::actingAs($admin)->test(AdminTasks::class)->call('openAssignment')
         ->set('assignmentUserIds', [(string) $first->id, (string) $second->id])->call('nextAssignmentStep')->assertHasErrors('assignmentUserIds');
     $second->update(['membership_level' => 'Normal']);
-    $component->call('nextAssignmentStep')->set('assignmentSelection', '1-a')->call('nextAssignmentStep')
-        ->set('addPremium', true)->set('premiumProductId', $wrongLevel->exclusive_id)->call('saveAssignment')->assertHasErrors('premiumProductId')
-        ->set('premiumProductId', $premium->exclusive_id)->set('premiumPrice2', '-1')->set('premiumCommission', '101')
-        ->call('saveAssignment')->assertHasErrors(['premiumPrice2', 'premiumCommission'])
-        ->set('premiumPrice2', '20')->set('premiumCommission', '5')->set('premiumPosition', 2)
-        ->call('saveAssignment')->assertHasErrors('premiumPosition');
+    $component->call('nextAssignmentStep')->set('assignmentSelection', '6-c')->call('saveAssignment')
+        ->assertHasErrors(['assignmentDay', 'assignmentGroup'])
+        ->set('assignmentSelection', '1-a')->call('saveAssignment')->assertHasNoErrors();
 
-    expect($first->fresh()->warehouseGroup())->toBeNull()->and($first->tasks()->count())->toBe(0);
-    $component->set('addPremium', false)->call('saveAssignment')->assertHasNoErrors();
-    expect($first->tasks()->count())->toBe(0)->and($second->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'a']);
+    expect($first->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'a'])
+        ->and($second->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'a']);
 });

@@ -26,6 +26,9 @@ class CompletedTask extends Model
         'commission_percentage',
         'warehouse_product_id',
         'available_after_tasks',
+        'is_merge',
+        'merge_items',
+        'merge_position',
     ];
 
     protected static function booted(): void
@@ -38,5 +41,18 @@ class CompletedTask extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_merge' => 'boolean',
+            'merge_items' => 'array',
+        ];
     }
 }

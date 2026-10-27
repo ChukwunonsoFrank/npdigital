@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\Warehouse;
 use App\Models\User;
-use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
 use App\Support\ProductBrand;
 use App\Support\ProductWarehouse;
@@ -55,9 +54,7 @@ it('renders the product warehouse page for admins', function () {
         ->assertSee('Day 4')
         ->assertSee('Day 5')
         ->assertSee('60 products')
-        ->assertDontSee('Group A')
-        ->assertSee('Exclusive Products')
-        ->assertSee('5 products');
+        ->assertDontSee('Group A');
 });
 
 it('does not render the product warehouse page for regular users', function () {
@@ -78,7 +75,7 @@ it('links to the product warehouse from the admin sidebar', function () {
         ->assertSee('Product Warehouse');
 });
 
-it('renders the warehouse page with day counts and exclusive products for the normal level', function () {
+it('renders the warehouse page with day counts for the normal level', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
     Livewire::actingAs($admin)
@@ -86,11 +83,8 @@ it('renders the warehouse page with day counts and exclusive products for the no
         ->assertSet('level', 'normal')
         ->assertSet('openDay', null)
         ->assertSet('openGroup', null)
-        ->assertSet('openExclusive', false)
         ->assertSee('60 products')
         ->assertDontSee('Group A')
-        ->assertSee('Exclusive Products — Normal')
-        ->assertSee('5 products')
         ->assertDontSee('Canvas Sneakers');
 });
 
@@ -101,12 +95,10 @@ it('switches to other membership levels and shows their product counts', functio
         ->test(Warehouse::class)
         ->call('selectLevel', 'silver')
         ->assertSet('level', 'silver')
-        ->assertSee('70 products')
-        ->assertSee('Exclusive Products — Silver')
+        ->assertSee('60 products')
         ->call('selectLevel', 'diamond')
         ->assertSet('level', 'diamond')
-        ->assertSee('100 products')
-        ->assertSee('Exclusive Products — Diamond');
+        ->assertSee('60 products');
 });
 
 it('toggles day and group visibility', function () {
@@ -143,39 +135,20 @@ it('reopens a day after closing it', function () {
         ->assertSee('Group A');
 });
 
-it('toggles the exclusive products section', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->assertSet('openExclusive', false)
-        ->assertDontSee('High-value products assigned during task creation')
-        ->call('toggleExclusive')
-        ->assertSet('openExclusive', true)
-        ->assertSee('High-value products assigned during task creation')
-        ->assertSee('Deluxe Tea Sampler')
-        ->assertSee('$35')
-        ->assertSee('Profit: $1.75')
-        ->assertSee('5% commission')
-        ->call('toggleExclusive')
-        ->assertSet('openExclusive', false)
-        ->assertDontSee('Deluxe Tea Sampler');
-});
-
 it('builds the warehouse product data for every membership level', function () {
     $expectations = [
-        'normal' => ['count' => 30, 'commission' => 0.5, 'min' => 28, 'max' => 38],
-        'silver' => ['count' => 35, 'commission' => 0.75, 'min' => 42, 'max' => 54],
-        'gold' => ['count' => 40, 'commission' => 1.0, 'min' => 62, 'max' => 75],
-        'platinum' => ['count' => 45, 'commission' => 1.25, 'min' => 62, 'max' => 71],
-        'diamond' => ['count' => 50, 'commission' => 1.5, 'min' => 60, 'max' => 66],
+        'normal' => ['commission' => 0.5, 'min' => 28, 'max' => 38],
+        'silver' => ['commission' => 0.75, 'min' => 42, 'max' => 54],
+        'gold' => ['commission' => 1.0, 'min' => 62, 'max' => 75],
+        'platinum' => ['commission' => 1.25, 'min' => 62, 'max' => 71],
+        'diamond' => ['commission' => 1.5, 'min' => 60, 'max' => 66],
     ];
 
     foreach ($expectations as $level => $expected) {
         $items = ProductWarehouse::groupItems($level, 1, 'a');
 
-        expect($items)->toHaveCount($expected['count'])
-            ->and(array_sum(ProductWarehouse::groupCounts($level)[1]))->toBe($expected['count'] * 2);
+        expect($items)->toHaveCount(ProductWarehouse::PRODUCTS_PER_SET)
+            ->and(array_sum(ProductWarehouse::groupCounts($level)[1]))->toBe(ProductWarehouse::PRODUCTS_PER_SET * 2);
 
         foreach ($items as $item) {
             expect($item['price'])->toBeGreaterThanOrEqual($expected['min'])
@@ -186,14 +159,6 @@ it('builds the warehouse product data for every membership level', function () {
                 ->and($item['brand'])->toBeIn(ProductBrand::BRANDS);
         }
 
-        $exclusives = ProductWarehouse::exclusiveProducts($level);
-
-        expect($exclusives)->toHaveCount(5);
-
-        foreach ($exclusives as $exclusive) {
-            expect($exclusive['brand'])->toBeIn(ProductBrand::BRANDS)
-                ->and($exclusive['brand2'])->toBeIn(ProductBrand::BRANDS);
-        }
     }
 });
 
@@ -367,206 +332,4 @@ it('forbids non admins from changing warehouse products', function () {
 
     expect(WarehouseProduct::query()->whereKey($custom->id)->exists())->toBeTrue()
         ->and(WarehouseProduct::query()->where('name', 'Attempted Product')->exists())->toBeFalse();
-});
-
-it('keeps exclusive combo edits scoped to their membership level', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('selectLevel', 'silver')
-        ->call('toggleExclusive')
-        ->call('openEditExclusive', 'ps1')
-        ->set('exclusiveName', 'Repackaged Perfume Set')
-        ->set('exclusivePrice', '200')
-        ->call('saveExclusive')
-        ->assertHasNoErrors()
-        ->assertSee('Repackaged Perfume Set');
-
-    $silver = collect(ProductWarehouse::exclusiveProducts('silver'))->firstWhere('id', 'ps1');
-    $normal = collect(ProductWarehouse::exclusiveProducts('normal'))->firstWhere('id', 'pn1');
-
-    expect($silver['name'])->toBe('Repackaged Perfume Set')
-        ->and((float) $silver['price'])->toBe(200.0)
-        ->and($normal['name'])->toBe('Deluxe Tea Sampler')
-        ->and((float) $normal['price'])->toBe(35.0)
-        ->and(WarehouseExclusiveProduct::query()->where('exclusive_id', 'ps1')->value('level'))->toBe('silver');
-});
-
-it('adds an exclusive premium combo to the open level', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('openAddExclusive')
-        ->assertSet('showExclusiveModal', true)
-        ->assertSet('editingExclusiveId', null)
-        ->assertSet('exclusiveName', '')
-        ->set('exclusiveName', 'Cast Iron Skillet')
-        ->set('exclusiveImage', 'https://example.com/skillet.jpg')
-        ->set('exclusivePrice', '65')
-        ->set('exclusiveName2', 'Chef Knife Set')
-        ->set('exclusiveImage2', 'https://example.com/knives.jpg')
-        ->set('exclusivePrice2', '90')
-        ->set('exclusiveCommission', '6')
-        ->set('exclusiveDescription', 'Professional kitchen duo.')
-        ->call('saveExclusive')
-        ->assertHasNoErrors()
-        ->assertSet('showExclusiveModal', false)
-        ->assertSee('Cast Iron Skillet')
-        ->assertSee('6 products');
-
-    $combo = WarehouseExclusiveProduct::query()->where('name', 'Cast Iron Skillet')->first();
-
-    expect($combo)->not->toBeNull()
-        ->and($combo->is_custom)->toBeTrue()
-        ->and($combo->level)->toBe('normal')
-        ->and($combo->exclusive_id)->toStartWith('custom-normal-')
-        ->and($combo->name2)->toBe('Chef Knife Set')
-        ->and((float) $combo->price)->toBe(65.0)
-        ->and((float) $combo->price2)->toBe(90.0)
-        ->and((float) $combo->commission)->toBe(6.0);
-
-    $items = ProductWarehouse::exclusiveProducts('normal');
-
-    expect($items)->toHaveCount(6)
-        ->and($items[array_key_last($items)]['name'])->toBe('Cast Iron Skillet')
-        ->and($items[array_key_last($items)]['name2'])->toBe('Chef Knife Set')
-        ->and($items[array_key_last($items)]['image_url'])->toBe('https://example.com/skillet.jpg')
-        ->and($items[array_key_last($items)]['image_url2'])->toBe('https://example.com/knives.jpg');
-});
-
-it('edits a generated exclusive premium combo', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('openEditExclusive', 'pn1')
-        ->assertSet('showExclusiveModal', true)
-        ->assertSet('editingExclusiveId', 'pn1')
-        ->assertSet('exclusiveName', 'Deluxe Tea Sampler')
-        ->assertSet('exclusiveName2', 'Bamboo Kitchen Set')
-        ->assertSet('exclusivePrice', '35')
-        ->assertSet('exclusivePrice2', '42')
-        ->assertSet('exclusiveCommission', '5')
-        ->set('exclusiveName', 'Grand Tea Collection')
-        ->set('exclusivePrice', '40')
-        ->set('exclusiveCommission', '6')
-        ->call('saveExclusive')
-        ->assertHasNoErrors()
-        ->assertSet('showExclusiveModal', false)
-        ->assertSee('Grand Tea Collection')
-        ->assertSee('Profit: $2.40')
-        ->assertSee('6% commission');
-
-    $combo = WarehouseExclusiveProduct::query()->where('exclusive_id', 'pn1')->first();
-
-    expect($combo)->not->toBeNull()
-        ->and($combo->is_custom)->toBeFalse()
-        ->and($combo->level)->toBe('normal')
-        ->and($combo->name)->toBe('Grand Tea Collection')
-        ->and((float) $combo->price)->toBe(40.0)
-        ->and((float) $combo->commission)->toBe(6.0);
-
-    $edited = collect(ProductWarehouse::exclusiveProducts('normal'))->firstWhere('id', 'pn1');
-
-    expect($edited['name'])->toBe('Grand Tea Collection')
-        ->and($edited['name2'])->toBe('Bamboo Kitchen Set')
-        ->and((float) $edited['price'])->toBe(40.0)
-        ->and((float) $edited['commission'])->toBe(6.0);
-});
-
-it('deletes a generated exclusive premium combo', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('deleteExclusive', 'pn1')
-        ->assertSee('4 products')
-        ->assertDontSee('Deluxe Tea Sampler')
-        ->assertSee('Aromatherapy Diffuser');
-
-    expect(WarehouseExclusiveProduct::query()->where('exclusive_id', 'pn1')->value('is_deleted'))->toBeTrue()
-        ->and(ProductWarehouse::exclusiveProducts('normal'))->toHaveCount(4);
-});
-
-it('permanently removes an added exclusive combo when deleted', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-    $combo = WarehouseExclusiveProduct::factory()->create(['level' => 'normal']);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('deleteExclusive', $combo->exclusive_id)
-        ->assertSee('5 products');
-
-    expect(WarehouseExclusiveProduct::query()->whereKey($combo->id)->exists())->toBeFalse()
-        ->and(ProductWarehouse::exclusiveProducts('normal'))->toHaveCount(5);
-});
-
-it('shows the empty state when every exclusive combo is deleted', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    foreach (ProductWarehouse::exclusiveProducts('normal') as $combo) {
-        WarehouseExclusiveProduct::factory()->create([
-            'exclusive_id' => $combo['id'],
-            'level' => 'normal',
-            'is_custom' => false,
-            'is_deleted' => true,
-        ]);
-    }
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->assertSee('0 products')
-        ->assertSee('No premium products for Normal level.');
-});
-
-it('validates the exclusive combo form before saving', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-
-    Livewire::actingAs($admin)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('openAddExclusive')
-        ->set('exclusiveName', '')
-        ->set('exclusiveName2', '')
-        ->set('exclusivePrice', 'free')
-        ->set('exclusivePrice2', '')
-        ->set('exclusiveCommission', '-2')
-        ->call('saveExclusive')
-        ->assertHasErrors(['exclusiveName', 'exclusiveName2', 'exclusivePrice', 'exclusivePrice2', 'exclusiveCommission'])
-        ->assertSet('showExclusiveModal', true);
-
-    expect(WarehouseExclusiveProduct::query()->count())->toBe(0);
-});
-
-it('forbids non admins from changing exclusive products', function () {
-    $user = User::factory()->create(['is_admin' => false]);
-    $combo = WarehouseExclusiveProduct::factory()->create(['level' => 'normal']);
-
-    Livewire::actingAs($user)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('deleteExclusive', $combo->exclusive_id)
-        ->assertForbidden();
-
-    Livewire::actingAs($user)
-        ->test(Warehouse::class)
-        ->call('toggleExclusive')
-        ->call('openAddExclusive')
-        ->set('exclusiveName', 'Attempted Combo')
-        ->set('exclusiveName2', 'Second Item')
-        ->set('exclusivePrice', '10')
-        ->set('exclusivePrice2', '20')
-        ->set('exclusiveCommission', '5')
-        ->call('saveExclusive')
-        ->assertForbidden();
-
-    expect(WarehouseExclusiveProduct::query()->whereKey($combo->id)->exists())->toBeTrue()
-        ->and(WarehouseExclusiveProduct::query()->where('name', 'Attempted Combo')->exists())->toBeFalse();
 });

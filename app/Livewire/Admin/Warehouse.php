@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
 use App\Support\ProductWarehouse;
 use Illuminate\Contracts\View\View;
@@ -23,8 +22,6 @@ class Warehouse extends Component
 
     public ?string $openGroup = null;
 
-    public bool $openExclusive = false;
-
     public bool $showProductModal = false;
 
     public ?string $editingProductId = null;
@@ -41,30 +38,6 @@ class Warehouse extends Component
 
     public $productImageUpload;
 
-    public bool $showExclusiveModal = false;
-
-    public ?string $editingExclusiveId = null;
-
-    public string $exclusiveName = '';
-
-    public string $exclusiveImage = '';
-
-    public string $exclusiveName2 = '';
-
-    public string $exclusiveImage2 = '';
-
-    public string $exclusivePrice = '';
-
-    public string $exclusivePrice2 = '';
-
-    public string $exclusiveCommission = '';
-
-    public string $exclusiveDescription = '';
-
-    public $exclusiveImageUpload;
-
-    public $exclusiveImageUpload2;
-
     public function selectLevel(string $level): void
     {
         if (! ProductWarehouse::isValidLevel($level)) {
@@ -74,7 +47,6 @@ class Warehouse extends Component
         $this->level = $level;
         $this->openDay = null;
         $this->openGroup = null;
-        $this->openExclusive = false;
     }
 
     public function toggleDay(int $day): void
@@ -94,11 +66,6 @@ class Warehouse extends Component
         }
 
         $this->openGroup = $this->openGroup === $group ? null : $group;
-    }
-
-    public function toggleExclusive(): void
-    {
-        $this->openExclusive = ! $this->openExclusive;
     }
 
     public function openAddProduct(): void
@@ -224,141 +191,6 @@ class Warehouse extends Component
         $this->productImageUpload = null;
     }
 
-    public function openAddExclusive(): void
-    {
-        $this->editingExclusiveId = null;
-        $this->exclusiveName = '';
-        $this->exclusiveImage = '';
-        $this->exclusiveName2 = '';
-        $this->exclusiveImage2 = '';
-        $this->exclusivePrice = '';
-        $this->exclusivePrice2 = '';
-        $this->exclusiveCommission = '';
-        $this->exclusiveDescription = '';
-        $this->exclusiveImageUpload = null;
-        $this->exclusiveImageUpload2 = null;
-        $this->resetValidation();
-        $this->showExclusiveModal = true;
-    }
-
-    public function openEditExclusive(string $exclusiveId): void
-    {
-        $product = collect(ProductWarehouse::exclusiveProducts($this->level))
-            ->firstWhere('id', $exclusiveId);
-
-        if ($product === null) {
-            return;
-        }
-
-        $this->editingExclusiveId = $exclusiveId;
-        $this->exclusiveName = (string) $product['name'];
-        $this->exclusiveImage = (string) ($product['image'] ?? '');
-        $this->exclusiveName2 = (string) ($product['name2'] ?? '');
-        $this->exclusiveImage2 = (string) ($product['image2'] ?? '');
-        $this->exclusivePrice = $this->formatAmount((float) $product['price']);
-        $this->exclusivePrice2 = $this->formatAmount((float) ($product['price2'] ?? 0));
-        $this->exclusiveCommission = $this->formatAmount((float) $product['commission']);
-        $this->exclusiveDescription = (string) ($product['description'] ?? '');
-        $this->exclusiveImageUpload = null;
-        $this->exclusiveImageUpload2 = null;
-        $this->resetValidation();
-        $this->showExclusiveModal = true;
-    }
-
-    public function saveExclusive(): void
-    {
-        $this->guardAdmin();
-
-        if ($this->editingExclusiveId === null && $this->exclusiveCommission === '') {
-            $this->exclusiveCommission = '5';
-        }
-
-        $this->validate([
-            'exclusiveName' => 'required|string|max:255',
-            'exclusiveName2' => 'required|string|max:255',
-            'exclusiveImage' => 'nullable|string|max:2048',
-            'exclusiveImage2' => 'nullable|string|max:2048',
-            'exclusiveImageUpload' => 'nullable|image|max:4096',
-            'exclusiveImageUpload2' => 'nullable|image|max:4096',
-            'exclusivePrice' => 'required|numeric|min:0',
-            'exclusivePrice2' => 'required|numeric|min:0',
-            'exclusiveCommission' => 'required|numeric|min:0',
-            'exclusiveDescription' => 'nullable|string|max:2000',
-        ]);
-
-        if ($this->exclusiveImageUpload) {
-            $this->exclusiveImage = $this->exclusiveImageUpload->store('warehouse', 'public');
-        }
-
-        if ($this->exclusiveImageUpload2) {
-            $this->exclusiveImage2 = $this->exclusiveImageUpload2->store('warehouse', 'public');
-        }
-
-        $attributes = [
-            'level' => $this->level,
-            'name' => $this->exclusiveName,
-            'image_url' => $this->exclusiveImage !== '' ? $this->exclusiveImage : null,
-            'price' => $this->exclusivePrice,
-            'name2' => $this->exclusiveName2,
-            'image_url2' => $this->exclusiveImage2 !== '' ? $this->exclusiveImage2 : null,
-            'price2' => $this->exclusivePrice2,
-            'commission' => $this->exclusiveCommission,
-            'description' => $this->exclusiveDescription !== '' ? $this->exclusiveDescription : null,
-            'is_deleted' => false,
-        ];
-
-        if ($this->editingExclusiveId !== null) {
-            WarehouseExclusiveProduct::query()
-                ->firstOrNew(['exclusive_id' => $this->editingExclusiveId])
-                ->fill($attributes)
-                ->save();
-
-            session()->flash('success-message', 'Premium product updated');
-        } else {
-            WarehouseExclusiveProduct::query()->create([
-                'exclusive_id' => 'custom-'.$this->level.'-'.Str::uuid(),
-                'is_custom' => true,
-                ...$attributes,
-            ]);
-
-            session()->flash('success-message', 'Premium product added');
-        }
-
-        $this->closeExclusiveModal();
-    }
-
-    public function deleteExclusive(string $exclusiveId): void
-    {
-        $this->guardAdmin();
-
-        $product = WarehouseExclusiveProduct::query()
-            ->where('level', $this->level)
-            ->where('exclusive_id', $exclusiveId)
-            ->first();
-
-        if ($product?->is_custom) {
-            $product->delete();
-        } else {
-            WarehouseExclusiveProduct::query()->updateOrCreate(
-                ['exclusive_id' => $exclusiveId],
-                [
-                    'level' => $this->level,
-                    'is_deleted' => true,
-                ],
-            );
-        }
-
-        session()->flash('success-message', 'Premium product removed');
-    }
-
-    public function closeExclusiveModal(): void
-    {
-        $this->showExclusiveModal = false;
-        $this->editingExclusiveId = null;
-        $this->exclusiveImageUpload = null;
-        $this->exclusiveImageUpload2 = null;
-    }
-
     public function render(): View
     {
         $counts = ProductWarehouse::groupCounts($this->level);
@@ -379,7 +211,6 @@ class Warehouse extends Component
             'levels' => ProductWarehouse::levels(),
             'days' => $days,
             'levelLabel' => ProductWarehouse::label($this->level),
-            'exclusiveProducts' => ProductWarehouse::exclusiveProducts($this->level),
         ]);
     }
 

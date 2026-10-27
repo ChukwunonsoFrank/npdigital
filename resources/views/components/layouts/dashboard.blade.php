@@ -104,6 +104,7 @@
     </div>
 
     @if ($variant === 'user')
+        <livewire:dashboard.golden-egg />
         <x-dashboard.mobile-nav :nav="$nav" />
         <x-dashboard.support-bubble />
     @endif

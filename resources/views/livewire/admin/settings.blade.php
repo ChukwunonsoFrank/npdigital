@@ -244,7 +244,7 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
     public function saveMembershipChart(): void
     {
         $validated = $this->validate([
-            'membershipChartRows' => ['required', 'array', 'size:5'],
+            'membershipChartRows' => ['required', 'array', 'size:6'],
             'membershipChartRows.*' => ['required', 'array:name,deposit,tasks,commission'],
             'membershipChartRows.*.name' => ['required', 'string', 'max:50', 'distinct'],
             'membershipChartRows.*.deposit' => ['required', 'string', 'max:50'],

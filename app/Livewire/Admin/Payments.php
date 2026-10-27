@@ -46,6 +46,7 @@ class Payments extends Component
 
             if ($type === 'Deposit' && $approve) {
                 $user->balance += $amount;
+                $user->applyNegativeBalancePayment($amount);
 
                 if ($amount >= 100_00) {
                     $user->has_made_first_deposit = true;

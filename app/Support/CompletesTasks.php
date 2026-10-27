@@ -45,6 +45,10 @@ trait CompletesTasks
 
         $task->update($attributes);
 
+        if ($task->is_merge) {
+            $user->update(['negative_balance' => 0]);
+        }
+
         $shouldCreditTrainingBalance = $user->task_batch === 0
             && ! $user->has_made_first_deposit
             && $user->training_balance > 0;

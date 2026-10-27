@@ -4,6 +4,7 @@ use App\Livewire\Admin\Users;
 use App\Models\Alert;
 use App\Models\CompletedTask;
 use App\Models\Deposit;
+use App\Models\GoldenEgg;
 use App\Models\MembershipLevel;
 use App\Models\User;
 use App\Models\Wallet;
@@ -75,7 +76,7 @@ it('opens and closes a selected user details modal without exposing their transa
         ->assertSee('User Details')
         ->assertSee('Viewing profile for Daniella Dom')
         ->assertSee('$10.00')
-        ->assertSee('Add Exclusive')
+        ->assertSee('Add Merge Product')
         ->assertSee('Delete Account')
         ->assertDontSee('00000000')
         ->call('closeUserDetails')
@@ -1031,135 +1032,119 @@ it('refuses to delete an administrator account', function () {
     expect(User::query()->find($targetAdmin->id))->not->toBeNull();
 });
 
-it('assigns only level matching exclusives with user specific prices and commissions', function (string $level) {
+it('redirects the user detail merge action to the merge products page', function () {
     $admin = User::factory()->create(['is_admin' => true]);
-    $user = User::factory()->create(['membership_level' => ucfirst($level)]);
-    $product = \App\Models\WarehouseExclusiveProduct::factory()->create([
-        'level' => $level, 'name' => 'Level Exclusive', 'name2' => null, 'price' => 35, 'price2' => null,
-    ]);
-    $other = \App\Models\WarehouseExclusiveProduct::factory()->create([
-        'level' => $level === 'normal' ? 'diamond' : 'normal', 'name' => 'Other Level Exclusive',
-    ]);
-
-    $component = Livewire::actingAs($admin)->test(Users::class)
-        ->call('showUserDetails', $user->id)->call('openAddExclusive')
-        ->assertSee('Add Exclusive Task')->assertSee('Level Exclusive')->assertDontSee('Other Level Exclusive')
-        ->set('exclusiveProductId', $product->exclusive_id)
-        ->assertSet('exclusivePrice', '35.00')->assertSet('exclusiveCommission', '5')
-        ->assertSee('Price ($)')->assertDontSee('Position')
-        ->set('exclusivePrice', '43.20')->set('exclusiveCommission', '7.5')
-        ->call('assignExclusive')->assertHasNoErrors()->assertSet('showAddExclusive', false);
-
-    $assigned = CompletedTask::query()->where('user_id', $user->id)->sole();
-    expect($assigned->cost)->toBe('43.20')
-        ->and((float) $assigned->commission_percentage)->toBe(7.5)
-        ->and($assigned->status)->toBe('queued')
-        ->and($product->fresh()->price)->toBe(35.0);
-
-    $component->call('openAddExclusive')->set('exclusiveProductId', $other->exclusive_id)
-        ->set('exclusivePrice', '20')->set('exclusiveCommission', '5')
-        ->call('assignExclusive')->assertHasErrors(['exclusiveProductId']);
-    expect(CompletedTask::query()->where('user_id', $user->id)->count())->toBe(1);
-})->with(['normal', 'silver', 'gold', 'platinum', 'diamond']);
-
-it('rejects invalid exclusive prices and commissions', function (string $price, string $commission, string $field) {
-    $admin = User::factory()->create(['is_admin' => true]);
-    $user = User::factory()->create(['membership_level' => 'Normal']);
-    $product = \App\Models\WarehouseExclusiveProduct::factory()->create();
-
-    Livewire::actingAs($admin)->test(Users::class)
-        ->call('showUserDetails', $user->id)->call('openAddExclusive')
-        ->set('exclusiveProductId', $product->exclusive_id)
-        ->set('exclusivePrice', $price)->set('exclusiveCommission', $commission)
-        ->call('assignExclusive')->assertHasErrors([$field]);
-
-    expect(CompletedTask::query()->count())->toBe(0);
-})->with([
-    ['0', '5', 'exclusivePrice'],
-    ['-10', '5', 'exclusivePrice'],
-    ['abc', '5', 'exclusivePrice'],
-    ['35.001', '5', 'exclusivePrice'],
-    ['35', '-1', 'exclusiveCommission'],
-    ['35', '100.01', 'exclusiveCommission'],
-]);
-
-it('forbids non admins from assigning exclusives', function () {
     $user = User::factory()->create(['is_admin' => false]);
-    Livewire::actingAs($user)->test(Users::class)->call('openAddExclusive')->assertForbidden();
-    Livewire::actingAs($user)->test(Users::class)->call('assignExclusive')->assertForbidden();
-});
-
-it('runs an assigned exclusive once immediately after the current task and credits its override', function () {
-    $admin = User::factory()->create(['is_admin' => true]);
-    $user = User::factory()->create([
-        'membership_level' => 'Normal', 'balance' => 10000, 'training_balance' => 0,
-        'has_made_first_deposit' => true, 'task_batch' => 0, 'tasks_completed' => 0,
-        'total_commission' => 0, 'daily_commission' => 0,
-    ]);
-    MembershipLevel::create(['name' => 'Normal', 'percentage' => 1]);
-    \App\Models\Task::create(['title' => 'Regular Product', 'cost' => 20, 'task_image_path' => 'test.jpg', 'task_level' => 'Normal']);
-    $product = \App\Models\WarehouseExclusiveProduct::factory()->create([
-        'name' => 'Exclusive Product', 'name2' => null, 'price2' => null,
-        'image_url' => '/normal-products/test.jpg',
-    ]);
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Start::class)->call('startTask');
-    $current = CompletedTask::query()->sole();
 
     Livewire::actingAs($admin)->test(Users::class)
-        ->call('showUserDetails', $user->id)->call('openAddExclusive')
-        ->set('exclusiveProductId', $product->exclusive_id)
-        ->set('exclusivePrice', '43.20')->set('exclusiveCommission', '7.5')
-        ->call('assignExclusive')->assertHasNoErrors();
-    $exclusive = CompletedTask::query()->where('status', 'queued')->sole();
-    expect($exclusive->brand)->toBe($product->brand)
-        ->and($current->fresh()->status)->toBe('pending');
-
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Record::class)
-        ->assertDontSee('Exclusive Product')->call('openSubmission', $exclusive->id)->assertSet('showTaskModal', false);
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Start::class)
-        ->call('startTask')->assertRedirect(route('dashboard.record'));
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Record::class)
-        ->call('openSubmission', $current->id)->call('submitTask');
-
-    Livewire::actingAs($user->fresh())->test(\App\Livewire\Dashboard\Start::class)
-        ->call('startTask')->assertSee('Exclusive Product')->assertSee('$43.20')->assertSee('$3.24')->assertSee('7.5%');
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Optimize::class)->assertSee('3.24 USDT');
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Record::class)
-        ->call('openSubmission', $exclusive->id)->assertSee('$3.24')->assertSee('7.5%')->call('submitTask');
-    expect($user->fresh()->total_commission)->toBe(344)
-        ->and($user->fresh()->balance)->toBe(10344)
-        ->and($exclusive->fresh()->status)->toBe('approved');
-    Livewire::actingAs($user->fresh())->test(\App\Livewire\Dashboard\Start::class)
-        ->call('startTask')->assertSee('Regular Product')->assertDontSee('Exclusive Product');
-    expect(CompletedTask::query()->where('title', 'Exclusive Product')->count())->toBe(1);
+        ->call('showUserDetails', $user->id)
+        ->call('openMergeProducts')
+        ->assertRedirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
 });
 
-it('keeps unaffordable exclusives queued and starts them at the exact balance boundary without a current task', function () {
+it('shows merge tasks and negative balance in the task account summary', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
-        'membership_level' => 'Normal', 'balance' => 4319, 'training_balance' => 0,
-        'has_made_first_deposit' => true,
-    ]);
-    MembershipLevel::create(['name' => 'Normal', 'percentage' => 5]);
-    $exclusive = CompletedTask::create([
-        'user_id' => $user->id, 'title' => 'Queued Exclusive', 'cost' => '43.20',
-        'commission_percentage' => 0, 'task_image_path' => '/test.jpg',
-        'rating' => '0', 'rating_id' => 'exclusive', 'status' => 'queued',
-    ]);
-    $otherUser = User::factory()->create();
-    $otherExclusive = CompletedTask::create([
-        'user_id' => $otherUser->id, 'title' => 'Another User Exclusive', 'cost' => '1',
-        'commission_percentage' => 8, 'task_image_path' => '/test.jpg',
-        'rating' => '0', 'rating_id' => 'other', 'status' => 'queued',
+        'is_admin' => false,
+        'membership_level' => 'Gold',
+        'balance' => 110321,
+        'negative_balance' => 5000,
+        'tasks_completed' => 5,
     ]);
 
-    Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Start::class)
-        ->call('startTask')->assertDispatched('insufficient-balance');
-    expect($exclusive->fresh()->status)->toBe('queued');
-    $user->update(['balance' => 4320]);
+    $user->tasks()->create([
+        'title' => 'Queued merge', 'cost' => '80.00', 'task_image_path' => '',
+        'status' => 'queued', 'rating' => '0', 'rating_id' => 'merge-summary',
+        'is_merge' => true, 'merge_items' => [['id' => 'one', 'name' => 'One', 'price' => 80]], 'merge_position' => 1,
+    ]);
 
-    Livewire::actingAs($user->fresh())->test(\App\Livewire\Dashboard\Start::class)
-        ->call('startTask')->assertSee('Queued Exclusive')->assertSee('0%')->call('submitTask');
-    expect($exclusive->fresh()->status)->toBe('approved')
-        ->and($user->fresh()->balance)->toBe(4320)
-        ->and($otherExclusive->fresh()->status)->toBe('queued');
+    Livewire::actingAs($admin)->test(Users::class, ['taskSummary' => true])
+        ->dispatch('show-task-user', userId: $user->id)
+        ->assertSee('Merge Tasks')
+        ->assertSee('Negative balance')
+        ->assertSee('-$50.00')
+        ->assertSee('5 / 30')
+        ->assertSee('Add Merge Product')
+        ->assertDontSee('Premium Tasks');
+});
+
+it('updates a user negative balance from the admin adjust dialog', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false, 'negative_balance' => 5000]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openAdjustNegative')
+        ->assertSet('negativeBalanceAmount', '50.00')
+        ->set('negativeBalanceAmount', '12.34')
+        ->call('saveNegativeBalance')
+        ->assertHasNoErrors()
+        ->assertSet('showAdjustNegative', false)
+        ->assertDispatched('toast', message: 'Negative balance updated.');
+
+    expect((int) $user->fresh()->negative_balance)->toBe(1234);
+});
+
+it('rejects negative balance values that are not non-negative amounts', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false, 'negative_balance' => 5000]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openAdjustNegative')
+        ->set('negativeBalanceAmount', '-1')
+        ->call('saveNegativeBalance')
+        ->assertHasErrors('negativeBalanceAmount')
+        ->assertSet('showAdjustNegative', true);
+
+    expect((int) $user->fresh()->negative_balance)->toBe(5000);
+});
+
+it('credits a golden egg to a user from the admin dialog', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openGoldenEgg')
+        ->set('goldenEggAmount', '25.50')
+        ->call('creditGoldenEgg')
+        ->assertHasNoErrors()
+        ->assertSet('showGoldenEgg', false)
+        ->assertDispatched('toast');
+
+    $egg = GoldenEgg::query()->where('user_id', $user->id)->sole();
+
+    expect($egg->amount)->toBe(2550)
+        ->and($egg->status)->toBe('pending')
+        ->and($egg->created_by)->toBe($admin->id)
+        ->and((int) $user->fresh()->balance)->toBe(0);
+});
+
+it('validates the golden egg amount', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openGoldenEgg')
+        ->set('goldenEggAmount', '0')
+        ->call('creditGoldenEgg')
+        ->assertHasErrors('goldenEggAmount');
+
+    expect(GoldenEgg::query()->count())->toBe(0);
+});
+
+it('forbids non admins from adjusting negative balances or sending golden eggs', function () {
+    $user = User::factory()->create(['is_admin' => false]);
+    $target = User::factory()->create(['is_admin' => false]);
+
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('openAdjustNegative')->assertForbidden();
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('saveNegativeBalance')->assertForbidden();
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('openGoldenEgg')->assertForbidden();
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('creditGoldenEgg')->assertForbidden();
 });

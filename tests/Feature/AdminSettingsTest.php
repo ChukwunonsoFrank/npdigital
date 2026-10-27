@@ -16,7 +16,7 @@ it('shows all platform settings in reference order and links the admin navigatio
     $this->actingAs($admin)->get('/admin/settings')
         ->assertOk()
         ->assertSee('<title>Platform Settings — NP Digital</title>', false)
-        ->assertSee('md:bottom-6! md:left-auto md:right-6', false)
+        ->assertSee('md:bottom-24! md:left-auto md:right-6', false)
         ->assertSee('Payment methods and platform configuration.')
         ->assertSeeInOrder([
             'Maintenance Mode',
@@ -284,7 +284,7 @@ it('saves the membership chart for the user dashboard without changing financial
     Volt::actingAs($admin)->test('admin.settings')->call('editMembershipChart')
         ->set('membershipChartRows.1.name', 'Silver Plus')
         ->set('membershipChartRows.1.deposit', '$425.50')
-        ->set('membershipChartRows.1.tasks', 37)
+        ->set('membershipChartRows.1.tasks', 30)
         ->set('membershipChartRows.1.commission', '0.85%')
         ->call('saveMembershipChart')->assertHasNoErrors()->assertSet('editingMembershipChart', false)
         ->assertDispatched('notify', message: 'Membership level chart saved.', type: 'success');
@@ -292,14 +292,14 @@ it('saves the membership chart for the user dashboard without changing financial
     Volt::actingAs($admin)->test('admin.settings')->call('editMembershipChart')
         ->assertSet('membershipChartRows.1.name', 'Silver Plus')
         ->assertSet('membershipChartRows.1.deposit', '$425.50')
-        ->assertSet('membershipChartRows.1.tasks', 37)
+        ->assertSet('membershipChartRows.1.tasks', 30)
         ->assertSet('membershipChartRows.1.commission', '0.85%')
         ->set('membershipChartRows.1.name', 'Discarded draft')->call('cancelMembershipChart')
         ->assertSet('editingMembershipChart', false)->call('editMembershipChart')
         ->assertSet('membershipChartRows.1.name', 'Silver Plus');
 
     \Livewire\Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Activities::class)
-        ->assertSeeInOrder(['Silver Plus', '$425.50', '37', '0.85%']);
+        ->assertSeeInOrder(['Silver Plus', '$425.50', '30', '0.85%']);
     expect(\App\Models\MembershipLevel::all()->toArray())->toBe($levels)
         ->and(PlatformSetting::current()->whatsapp_support_number)->toBe('+1234567890')
         ->and(PlatformSetting::current()->check_in_program)->toBeNull();
@@ -351,7 +351,7 @@ it('edits adds and removes membership perks and displays saved content on the co
 
     Volt::actingAs($admin)->test('admin.settings')->call('editMembershipPerks')
         ->assertSet('membershipPerkDraft.Silver.0', 'Silver-specific access')
-        ->assertSet('membershipPerkDraft.Silver.1', 'Profits of 0.75% per Product - 35 products per set')
+        ->assertSet('membershipPerkDraft.Silver.1', 'Profits of 0.75% per Product - 30 products per set')
         ->assertSet('membershipPerkDraft.Gold.4', 'Gold-only priority support')
         ->set('membershipPerkDraft.Silver.0', 'Discarded text')->call('cancelMembershipPerks')
         ->assertSet('editingMembershipPerks', false)->call('editMembershipPerks')
@@ -392,7 +392,7 @@ it('denies membership perk changes after administrator access is revoked', funct
     ['cancelMembershipPerks', []],
 ]);
 
-it('creates a membership level with perks and empty warehouse groups', function () {
+it('creates a membership level with perks and a uniform warehouse catalog', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['is_admin' => false]);
     $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
@@ -422,17 +422,17 @@ it('creates a membership level with perks and empty warehouse groups', function 
         ->call('selectLevel', 'vvip-elite')
         ->assertSet('level', 'vvip-elite')
         ->assertSee('VVIP Elite')
-        ->assertSee('0 products')
+        ->assertSee('60 products')
         ->call('toggleDay', 1)
         ->call('toggleGroup', 'a')
-        ->assertSee('0 items')
+        ->assertSee('30 items')
         ->call('openAddProduct')
         ->assertSet('productCommission', '0')
         ->set('productName', 'Elite Product')
         ->set('productPrice', '100')
         ->call('saveProduct')
         ->assertHasNoErrors()
-        ->assertSee('1 items');
+        ->assertSee('31 items');
 });
 
 it('keeps a newly created level when membership perks are already being edited', function () {

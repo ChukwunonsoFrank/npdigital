@@ -147,8 +147,8 @@
             <section role="dialog" aria-modal="true" aria-labelledby="assignment-title" x-trap.inert.noscroll="true"
                 class="relative max-h-[90vh] w-full max-w-md overflow-hidden rounded-xl border border-border bg-card p-6 text-foreground shadow-lg">
                 <button type="button" wire:click="$set('showAssignmentModal', false)" aria-label="Close assignment" class="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground"><x-dashboard.icon name="x" class="h-4 w-4" /></button>
-                <form wire:submit="{{ $assignmentStep === 3 ? 'saveAssignment' : 'nextAssignmentStep' }}" class="flex max-h-[calc(90vh-3rem)] flex-col gap-6">
-                    <h2 id="assignment-title" class="shrink-0 pr-4 text-lg font-bold">Step {{ $assignmentStep }}: {{ [1 => 'Select Users', 2 => 'Select Group', 3 => 'Premium Product (Optional)'][$assignmentStep] ?? 'Select Users' }}</h2>
+                <form wire:submit="{{ $assignmentStep === 2 ? 'saveAssignment' : 'nextAssignmentStep' }}" class="flex max-h-[calc(90vh-3rem)] flex-col gap-6">
+                    <h2 id="assignment-title" class="shrink-0 pr-4 text-lg font-bold">Step {{ $assignmentStep }}: {{ [1 => 'Select Users', 2 => 'Select Group'][$assignmentStep] ?? 'Select Users' }}</h2>
 
                     <div class="min-h-0 space-y-6 overflow-y-auto">
                     @if ($selectedAssignmentUsers->isNotEmpty())
@@ -203,55 +203,12 @@
                                 </flux:menu>
                             </flux:dropdown>
                         </div>
-                    @else
-                        <flux:checkbox wire:model.live="addPremium" label="Add a premium product" style="--color-accent: var(--color-primary); --color-accent-foreground: var(--color-primary-foreground)" class="[&_[data-flux-checkbox-indicator]]:rounded-full!" />
-                        @if ($addPremium)
-                            @php $premiumProduct = collect($premiumProducts)->firstWhere('id', $premiumProductId); @endphp
-                            <div class="space-y-3 rounded-xl border border-border p-3">
-                                <label class="text-xs">Premium Product ({{ ucfirst($selectedAssignmentUsers->first()?->membership_level ?? '') }} level)</label>
-                                <flux:dropdown position="bottom" align="start" x-data="{ width: 0 }" x-on:click="width = $el.getBoundingClientRect().width" class="w-full">
-                                    <button type="button" class="flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-left text-sm"><span>{{ $premiumProduct ? $premiumProduct['name'].($premiumProduct['name2'] ? ' + '.$premiumProduct['name2'] : '') : 'Select product' }}</span><x-dashboard.icon name="chevron-down" class="h-4 w-4 shrink-0 text-muted-foreground" /></button>
-                                    <flux:menu x-bind:style="{ width: width + 'px' }" class="max-h-72 overflow-y-auto bg-card!">
-                                        <flux:menu.radio.group wire:model.live="premiumProductId" class="block">
-                                            @foreach ($premiumProducts as $product)
-                                                <flux:menu.radio :value="$product['id']" class="whitespace-normal! data-checked:bg-emerald-500! data-checked:text-white!">{{ $product['name'] }}{{ $product['name2'] ? ' + '.$product['name2'] : '' }}</flux:menu.radio>
-                                            @endforeach
-                                        </flux:menu.radio.group>
-                                    </flux:menu>
-                                </flux:dropdown>
-                                @if ($premiumProducts === [])<p class="text-sm text-muted-foreground">No premium products available for this level.</p>@endif
-                                @if ($premiumProduct)
-                                    <div wire:key="premium-preview-{{ $premiumProductId }}" class="space-y-3 rounded-xl border border-amber-300 bg-amber-500/5 p-3">
-                                        <span class="inline-block rounded-full bg-amber-500 px-3 py-1 text-[10px] font-bold text-white">PREMIUM {{ $premiumProduct['name2'] ? 'COMBO' : 'PRODUCT' }}</span>
-                                        @foreach (['' => 'premiumPrice', '2' => 'premiumPrice2'] as $suffix => $priceProperty)
-                                            @if ($premiumProduct['name'.$suffix])
-                                                <div class="flex items-center gap-3">
-                                                    @if ($premiumProduct['image_url'.$suffix])
-                                                        <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-md">
-                                                            <img src="{{ $premiumProduct['image_url'.$suffix] }}" alt="{{ $premiumProduct['name'.$suffix] }}" class="h-full w-full object-cover" />
-                                                            <x-product-brand-logo :brand="$premiumProduct['brand'.$suffix]" size="sm" />
-                                                        </div>
-                                                    @endif
-                                                    <div class="min-w-0 flex-1 space-y-1"><p class="break-words text-sm font-bold">{{ $premiumProduct['name'.$suffix] }}</p><flux:input wire:model.live.debounce.300ms="{{ $priceProperty }}" aria-label="{{ $premiumProduct['name'.$suffix] }} price" type="number" min="0.01" step="0.01" class="max-w-28" /></div>
-                                                </div>
-                                            @endif
-                                        @endforeach
-                                        <div class="grid grid-cols-2 gap-3 border-t border-amber-300 pt-3">
-                                            <flux:input wire:model="premiumPosition" label="Position" type="number" min="1" />
-                                            <flux:input wire:model.live.debounce.300ms="premiumCommission" label="Commission (%)" type="number" min="0" max="100" step="0.01" />
-                                        </div>
-                                        @php $combined = (is_numeric($premiumPrice) ? (float) $premiumPrice : 0) + ($premiumProduct['name2'] && is_numeric($premiumPrice2) ? (float) $premiumPrice2 : 0); @endphp
-                                        <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Combined: ${{ number_format($combined, 2) }} · Total Profit: ${{ number_format($combined * (is_numeric($premiumCommission) ? (float) $premiumCommission : 0) / 100, 2) }}</p>
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
                     @endif
                     @if ($errors->any())<div role="alert" class="space-y-1 text-sm text-destructive">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
                     </div>
                     <div class="grid shrink-0 grid-cols-2 gap-2">
                         <button type="button" wire:click="{{ $assignmentStep === 1 ? '$set(\'showAssignmentModal\', false)' : 'previousAssignmentStep' }}" class="h-10 rounded-lg border border-input bg-background text-sm hover:bg-muted">{{ $assignmentStep === 1 ? 'Cancel' : 'Back' }}</button>
-                        <button type="submit" wire:loading.attr="disabled" class="h-10 rounded-lg bg-[hsl(190,100%,44%)] text-sm font-medium text-white hover:bg-[hsl(190,100%,39%)] disabled:opacity-50">{{ $assignmentStep === 3 ? 'Assign' : 'Next' }}</button>
+                        <button type="submit" wire:loading.attr="disabled" class="h-10 rounded-lg bg-[hsl(190,100%,44%)] text-sm font-medium text-white hover:bg-[hsl(190,100%,39%)] disabled:opacity-50">{{ $assignmentStep === 2 ? 'Assign' : 'Next' }}</button>
                     </div>
                 </form>
             </section>

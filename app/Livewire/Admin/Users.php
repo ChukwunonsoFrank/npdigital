@@ -69,13 +69,13 @@ class Users extends Component
 
     public string $fundsAmount = '';
 
-    public bool $showAddExclusive = false;
+    public bool $showAdjustNegative = false;
 
-    public string $exclusiveProductId = '';
+    public string $negativeBalanceAmount = '';
 
-    public string $exclusivePrice = '';
+    public bool $showGoldenEgg = false;
 
-    public string $exclusiveCommission = '';
+    public string $goldenEggAmount = '';
 
     public bool $showSetProducts = false;
 
@@ -145,78 +145,116 @@ class Users extends Component
         $this->dispatch('toast', message: 'Warehouse group assigned. It will apply after any current task.');
     }
 
-    public function openAddExclusive(): void
+    public function openMergeProducts(): void
     {
         abort_unless(Auth::user()?->is_admin, 403);
 
-        if (! User::query()->where('is_admin', false)->find($this->selectedUserId)) {
-            return;
-        }
-
-        $this->reset('exclusiveProductId', 'exclusivePrice', 'exclusiveCommission');
-        $this->resetValidation();
-        $this->showAddExclusive = true;
-    }
-
-    public function closeAddExclusive(): void
-    {
-        $this->showAddExclusive = false;
-        $this->resetValidation();
-    }
-
-    /** @return list<array<string, mixed>> */
-    private function exclusiveProducts(): array
-    {
         $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
 
-        return $user ? ProductWarehouse::exclusiveProducts(strtolower($user->membership_level)) : [];
-    }
-
-    public function updatedExclusiveProductId(): void
-    {
-        $product = collect($this->exclusiveProducts())->firstWhere('id', $this->exclusiveProductId);
-        $this->exclusivePrice = $product ? number_format($product['price'] + ($product['price2'] ?? 0), 2, '.', '') : '';
-        $this->exclusiveCommission = $product ? (string) $product['commission'] : '';
-        $this->resetValidation();
-    }
-
-    public function assignExclusive(): void
-    {
-        abort_unless(Auth::user()?->is_admin, 403);
-
-        if (! $this->showAddExclusive) {
+        if (! $user) {
             return;
         }
 
-        $user = User::query()->where('is_admin', false)->findOrFail($this->selectedUserId);
-        $products = $this->exclusiveProducts();
+        $this->redirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
+    }
 
-        $this->validate([
-            'exclusiveProductId' => ['required', Rule::in(array_column($products, 'id'))],
-            'exclusivePrice' => ['required', 'numeric', 'min:0.01', 'max:99999999.99', 'decimal:0,2'],
-            'exclusiveCommission' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
-        ], [], [
-            'exclusiveProductId' => 'exclusive product',
-            'exclusivePrice' => 'price',
-            'exclusiveCommission' => 'commission',
+    public function openAdjustNegative(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->negativeBalanceAmount = number_format((int) $user->negative_balance / 100, 2, '.', '');
+        $this->resetValidation();
+        $this->showAdjustNegative = true;
+    }
+
+    public function closeAdjustNegative(): void
+    {
+        $this->showAdjustNegative = false;
+        $this->reset('negativeBalanceAmount');
+        $this->resetValidation();
+    }
+
+    public function saveNegativeBalance(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            $this->closeAdjustNegative();
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'negativeBalanceAmount' => ['required', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'],
+        ], [
+            'negativeBalanceAmount.required' => 'Enter the negative balance amount.',
         ]);
 
-        $product = collect($products)->firstWhere('id', $this->exclusiveProductId);
-
-        CompletedTask::create([
-            'user_id' => $user->id,
-            'title' => $product['name'].($product['name2'] ? ' + '.$product['name2'] : ''),
-            'cost' => number_format((float) $this->exclusivePrice, 2, '.', ''),
-            'commission_percentage' => $this->exclusiveCommission,
-            'task_image_path' => $product['image'] ?? '',
-            'brand' => $product['brand'],
-            'rating' => '0',
-            'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
-            'status' => 'queued',
+        $user->update([
+            'negative_balance' => (int) round(((float) $validated['negativeBalanceAmount']) * 100),
         ]);
 
-        $this->closeAddExclusive();
-        $this->dispatch('toast', message: 'Exclusive task assigned. It will appear after the current task.');
+        $this->closeAdjustNegative();
+        $this->dispatch('toast', message: 'Negative balance updated.');
+        $this->dispatch('task-user-updated');
+    }
+
+    public function openGoldenEgg(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->goldenEggAmount = '';
+        $this->resetValidation();
+        $this->showGoldenEgg = true;
+    }
+
+    public function closeGoldenEgg(): void
+    {
+        $this->showGoldenEgg = false;
+        $this->reset('goldenEggAmount');
+        $this->resetValidation();
+    }
+
+    public function creditGoldenEgg(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            $this->closeGoldenEgg();
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'goldenEggAmount' => ['required', 'numeric', 'min:0.01', 'max:49999999.99', 'decimal:0,2'],
+        ], [
+            'goldenEggAmount.required' => 'Enter the golden egg amount.',
+        ]);
+
+        $user->goldenEggs()->create([
+            'amount' => (int) round(((float) $validated['goldenEggAmount']) * 100),
+            'status' => 'pending',
+            'created_by' => Auth::id(),
+        ]);
+
+        $this->closeGoldenEgg();
+        $this->dispatch('toast', message: 'Golden egg credited. It will appear on the user\'s next page load.');
         $this->dispatch('task-user-updated');
     }
 
@@ -235,7 +273,8 @@ class Users extends Component
 
     public function closeUserDetails(): void
     {
-        $this->closeAddExclusive();
+        $this->closeAdjustNegative();
+        $this->closeGoldenEgg();
         $this->closeSetProducts();
         $this->selectedUserId = null;
     }
@@ -761,6 +800,7 @@ class Users extends Component
 
             $startingBalance = (int) $lockedUser->balance;
             $lockedUser->balance = $startingBalance + $amountInCents;
+            $lockedUser->applyNegativeBalancePayment($amountInCents);
 
             if (
                 ! $lockedUser->has_made_first_deposit
@@ -963,8 +1003,7 @@ class Users extends Component
             'upgradeTargetLevels' => $upgradeTargetUser ? $this->eligibleUpgradeLevels($upgradeTargetUser) : collect(),
             'downgradeMembershipLevels' => $selectedUser ? $this->eligibleDowngradeLevels($selectedUser) : collect(),
             'warehouseGroups' => $warehouseGroups,
-            'exclusiveProducts' => $this->showAddExclusive ? $this->exclusiveProducts() : [],
-            'exclusiveTaskCount' => $selectedUser ? CompletedTask::query()->where('user_id', $selectedUser->id)->whereNotNull('commission_percentage')->whereIn('status', ['queued', 'pending'])->count() : 0,
+            'mergeTaskCount' => $selectedUser ? CompletedTask::query()->where('user_id', $selectedUser->id)->where('is_merge', true)->whereIn('status', ['queued', 'pending'])->count() : 0,
         ]);
     }
 }

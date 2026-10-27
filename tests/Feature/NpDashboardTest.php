@@ -66,7 +66,7 @@ it('renders the redesigned start page content', function () {
         ->assertSee('On Hold')
         ->assertSee('Top Rated & Best Selling Products')
         ->assertSee('product-carousel-track')
-        ->assertSee('START 0/30')
+        ->assertSee('0/3 sets completed today')->assertSee('START TASK')
         ->assertSee('Operating Hours')
         ->assertSee('Users may optimize the Product during the daily operation hours')
         ->assertSee('from 10:00 to 22:59')
@@ -109,7 +109,7 @@ it('renders the activities page content', function () {
         ->assertSee('Platinum')
         ->assertSee('Diamond')
         ->assertSee('$7,999')
-        ->assertSeeInOrder(['$7,999', '50', '1.50%'])
+        ->assertSeeInOrder(['$7,999', '30', '1.50%'])
         ->assertSee('1.50%')
         ->assertSee('Deposit')
         ->assertSee('Bonuses!')
@@ -119,7 +119,7 @@ it('renders the activities page content', function () {
         ->assertSee('Bigger Rewards!')
         ->assertSee('Do not hesitate to contact our online support for information.')
         ->assertSee('Normal users are assigned general usage access to data collection')
-        ->assertSee('Profits of 1.50% per Product - 50 products per set')
+        ->assertSee('Profits of 1.50% per Product - 30 products per set')
         ->assertSee('assets/img/normal.png')
         ->assertSee('assets/img/silver.png')
         ->assertSee('assets/img/gold.png')
@@ -335,8 +335,8 @@ it('renders the admin overview page content', function () {
         ->assertSee('Total Users')
         ->assertSee('Total Products')
         ->assertSee('No new messages')
-        ->assertSee('No pending upgrade requests')
-        ->assertSee('No pending transactions');
+        ->assertSee('No upgrade requests yet')
+        ->assertSee('No transactions yet');
 });
 
 it('renders the shared dashboard shell with the user navigation', function () {

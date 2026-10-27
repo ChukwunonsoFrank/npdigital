@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\MembershipLevel;
-use App\Models\WarehouseExclusiveProduct;
 use App\Models\WarehouseProduct;
 use Closure;
 use Illuminate\Support\Collection;
@@ -21,6 +20,11 @@ use Illuminate\Support\Str;
 class ProductWarehouse
 {
     public const DAY_COUNT = 5;
+
+    /**
+     * Products in a single set for every membership level.
+     */
+    public const PRODUCTS_PER_SET = 30;
 
     /** @var list<string> */
     public const GROUPS = ['a', 'b'];
@@ -73,11 +77,11 @@ class ProductWarehouse
     }
 
     /**
-     * Number of products in a single group of the level.
+     * Number of products in a single set. Every level uses a uniform set size.
      */
     public static function productCount(string $level): int
     {
-        return (int) (self::data()['counts'][$level]['count'] ?? 0);
+        return self::PRODUCTS_PER_SET;
     }
 
     /**
@@ -87,7 +91,7 @@ class ProductWarehouse
      */
     public static function groupCounts(string $level): array
     {
-        if (self::usesDatabase($level)) {
+        if (self::usesDatabase($level) && self::hasDatabaseProducts($level)) {
             return WarehouseProduct::query()
                 ->where('level', $level)
                 ->where('is_deleted', false)
@@ -135,20 +139,17 @@ class ProductWarehouse
 
     public static function commission(string $level): float
     {
-        if (self::usesDatabase($level)) {
+        if (self::usesDatabase($level) && self::hasDatabaseProducts($level)) {
             return (float) (WarehouseProduct::query()
                 ->where('level', $level)
-                ->value('commission') ?? self::membershipLevel($level)?->percentage ?? match ($level) {
-                    'normal' => 0.5,
-                    'silver' => 0.75,
-                    'gold' => 1.0,
-                    'platinum' => 1.25,
-                    'diamond' => 1.5,
-                    default => 0.0,
-                });
+                ->value('commission') ?? self::membershipLevel($level)?->percentage ?? 0.0);
         }
 
-        return (float) self::data()['counts'][$level]['commission'];
+        if ($membershipLevel = self::membershipLevel($level)) {
+            return (float) $membershipLevel->percentage;
+        }
+
+        return (float) (self::data()['counts'][self::dataLevel($level)]['commission'] ?? 0.0);
     }
 
     /**
@@ -174,7 +175,7 @@ class ProductWarehouse
      */
     public static function groupItems(string $level, int $day, string $group): array
     {
-        if (self::usesDatabase($level)) {
+        if (self::usesDatabase($level) && self::hasDatabaseProducts($level)) {
             return WarehouseProduct::query()
                 ->where('level', $level)
                 ->where('day', $day)
@@ -255,6 +256,25 @@ class ProductWarehouse
     }
 
     /**
+     * Determine whether a level has imported products to read from the database.
+     */
+    private static function hasDatabaseProducts(string $level): bool
+    {
+        return in_array($level, self::DATABASE_LEVELS, true)
+            && WarehouseProduct::query()
+                ->where('level', $level)
+                ->exists();
+    }
+
+    /**
+     * Catalog key used for generated product data. Levels without their own catalog use the diamond catalog.
+     */
+    private static function dataLevel(string $level): string
+    {
+        return array_key_exists($level, self::data()['catalogs']) ? $level : 'diamond';
+    }
+
+    /**
      * Find the membership level whose key matches the warehouse level.
      */
     private static function membershipLevel(string $level): ?MembershipLevel
@@ -304,7 +324,8 @@ class ProductWarehouse
     private static function baseGroupItems(string $level, int $day, string $group): array
     {
         $count = self::productCount($level);
-        $levelIndex = (int) array_search($level, self::data()['levels'], true);
+        $levelKey = self::dataLevel($level);
+        $levelIndex = (int) array_search($levelKey, self::data()['levels'], true);
         $groupIndex = (int) array_search($group, self::GROUPS, true);
         $offset = (($day - 1) * count(self::GROUPS) + $groupIndex) * $count;
         $items = array_slice(self::pool($level), $offset, $count);
@@ -352,91 +373,80 @@ class ProductWarehouse
     }
 
     /**
-     * Premium combos of a level, with admin edits applied and admin additions appended.
+     * Search the warehouse catalog across every level for the merge product builder.
      *
-     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, brand: string, price: float, commission: float, description: string|null, name2: string|null, image2: string|null, image_url2: string|null, brand2: string, price2: float|null}>
+     * @return list<array{id: string, name: string, image: string|null, image_url: string|null, brand: string, description: string|null, price: float, commission: float, level: string, day: int, group: string}>
      */
-    public static function exclusiveProducts(string $level): array
+    public static function searchProducts(?string $level, string $term = '', int $limit = 30): array
     {
-        $items = array_map(fn (array $product): array => [
-            'id' => $product['id'],
-            'name' => $product['name'],
-            'image' => ($product['image'] ?? '') !== '' ? $product['image'] : null,
-            'brand' => ProductBrand::forSeed($level.'-'.$product['id']),
-            'price' => (float) $product['price'],
-            'commission' => (float) $product['commission'],
-            'description' => $product['description'],
-            'name2' => $product['name2'] ?? null,
-            'image2' => ($product['image2'] ?? '') !== '' ? $product['image2'] : null,
-            'brand2' => ProductBrand::forSeed($level.'-'.$product['id'].'-2'),
-            'price2' => isset($product['price2']) ? (float) $product['price2'] : null,
-        ], self::data()['exclusives'][$level] ?? []);
+        $levels = $level !== null && $level !== ''
+            ? [$level]
+            : array_column(self::levels(), 'value');
 
-        $changes = WarehouseExclusiveProduct::query()
-            ->where('level', $level)
+        $term = trim($term);
+        $results = [];
+        $databaseLevels = [];
+
+        $rows = WarehouseProduct::query()
+            ->whereIn('level', $levels)
+            ->where('is_deleted', false)
+            ->when($term !== '', fn ($query) => $query->where('name', 'like', '%'.$term.'%'))
+            ->orderBy('name')
+            ->limit($limit)
             ->get();
 
-        if ($changes->isNotEmpty()) {
-            $byExclusiveId = $changes->keyBy('exclusive_id');
-            $edited = [];
+        foreach ($rows as $product) {
+            $databaseLevels[$product->level] = true;
 
-            foreach ($items as $item) {
-                $change = $byExclusiveId->get($item['id']);
-
-                if ($change?->is_deleted) {
-                    continue;
-                }
-
-                $edited[] = $change === null ? $item : self::applyExclusiveChange($item, $change);
-            }
-
-            foreach ($changes->where('is_custom', true)->sortBy('id') as $change) {
-                $edited[] = [
-                    'id' => $change->exclusive_id,
-                    'name' => (string) $change->name,
-                    'image' => $change->image_url,
-                    'brand' => ProductBrand::resolve($change->brand, $change->exclusive_id),
-                    'price' => (float) ($change->price ?? 0),
-                    'commission' => (float) ($change->commission ?? 0),
-                    'description' => $change->description,
-                    'name2' => $change->name2,
-                    'image2' => $change->image_url2,
-                    'brand2' => ProductBrand::resolve($change->brand2, $change->exclusive_id.'-2'),
-                    'price2' => $change->price2 === null ? null : (float) $change->price2,
-                ];
-            }
-
-            $items = $edited;
+            $results[] = [
+                'id' => $product->product_id,
+                'name' => (string) $product->name,
+                'image' => $product->image_url,
+                'image_url' => self::imageUrl($product->image_url),
+                'brand' => ProductBrand::resolve($product->brand, $product->product_id),
+                'description' => $product->description,
+                'price' => (float) $product->price,
+                'commission' => (float) $product->commission,
+                'level' => $product->level,
+                'day' => (int) $product->day,
+                'group' => $product->group_key,
+            ];
         }
 
-        return array_map(fn (array $item): array => [
-            ...$item,
-            'image_url' => self::imageUrl($item['image']),
-            'image_url2' => self::imageUrl($item['image2']),
-        ], $items);
-    }
+        if (count($results) >= $limit) {
+            return $results;
+        }
 
-    /**
-     * Apply an admin edit to a generated premium combo.
-     *
-     * @param  array<string, mixed>  $item
-     * @return array<string, mixed>
-     */
-    private static function applyExclusiveChange(array $item, WarehouseExclusiveProduct $change): array
-    {
-        return [
-            ...$item,
-            'name' => (string) ($change->name ?? $item['name']),
-            'image' => $change->image_url ?? $item['image'],
-            'brand' => ProductBrand::resolve($change->brand, (string) $item['id']),
-            'price' => (float) ($change->price ?? $item['price']),
-            'commission' => (float) ($change->commission ?? $item['commission']),
-            'description' => $change->description ?? $item['description'],
-            'name2' => $change->name2 ?? $item['name2'],
-            'image2' => $change->image_url2 ?? $item['image2'],
-            'brand2' => ProductBrand::resolve($change->brand2, (string) $item['id'].'-2'),
-            'price2' => $change->price2 ?? $item['price2'],
-        ];
+        foreach ($levels as $levelKey) {
+            if (isset($databaseLevels[$levelKey]) || self::hasDatabaseProducts($levelKey)) {
+                continue;
+            }
+
+            for ($day = 1; $day <= self::DAY_COUNT; $day++) {
+                foreach (self::GROUPS as $group) {
+                    foreach (self::groupItems($levelKey, $day, $group) as $product) {
+                        if ($term !== '' && ! str_contains(strtolower($product['name']), strtolower($term))) {
+                            continue;
+                        }
+
+                        $results[] = [
+                            ...$product,
+                            'level' => $levelKey,
+                            'day' => $day,
+                            'group' => $group,
+                        ];
+
+                        if (count($results) >= $limit) {
+                            return $results;
+                        }
+                    }
+                }
+            }
+        }
+
+        usort($results, fn (array $first, array $second): int => strcasecmp($first['name'], $second['name']));
+
+        return array_slice($results, 0, $limit);
     }
 
     /**
@@ -450,7 +460,7 @@ class ProductWarehouse
             return self::$poolCache[$level];
         }
 
-        $catalog = self::data()['catalogs'][$level];
+        $catalog = self::data()['catalogs'][self::dataLevel($level)];
         $target = self::productCount($level) * 20;
         $prefixes = self::data()['prefixes'];
         $suffixes = self::data()['suffixes'];
@@ -514,7 +524,7 @@ class ProductWarehouse
 
     private static function clampPrice(int $price, string $level): int
     {
-        $clamp = self::data()['clamp'][$level];
+        $clamp = self::data()['clamp'][self::dataLevel($level)];
 
         return max((int) $clamp['min'], min((int) $clamp['max'], $price));
     }
