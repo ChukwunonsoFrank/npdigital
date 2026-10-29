@@ -198,12 +198,18 @@ class Warehouse extends Component
         $days = [];
 
         for ($day = 1; $day <= ProductWarehouse::DAY_COUNT; $day++) {
+            $groups = [];
+
+            foreach (ProductWarehouse::GROUPS as $group) {
+                $groups[$group] = [
+                    'count' => $counts[$day][$group] ?? 0,
+                    'items' => $this->groupItems($day, $group),
+                ];
+            }
+
             $days[$day] = [
-                'count' => $counts[$day]['a'] + $counts[$day]['b'],
-                'groups' => [
-                    'a' => ['count' => $counts[$day]['a'], 'items' => $this->groupItems($day, 'a')],
-                    'b' => ['count' => $counts[$day]['b'], 'items' => $this->groupItems($day, 'b')],
-                ],
+                'count' => array_sum(array_column($groups, 'count')),
+                'groups' => $groups,
             ];
         }
 

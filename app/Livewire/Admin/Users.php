@@ -145,7 +145,7 @@ class Users extends Component
         $this->dispatch('toast', message: 'Warehouse group assigned. It will apply after any current task.');
     }
 
-    public function openMergeProducts(): void
+    public function openAssignOrders(): void
     {
         abort_unless(Auth::user()?->is_admin, 403);
 
@@ -155,7 +155,7 @@ class Users extends Component
             return;
         }
 
-        $this->redirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
+        $this->redirect(route('admin.dashboard.assign-orders', ['user' => $user->id]));
     }
 
     public function openAdjustNegative(): void

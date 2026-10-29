@@ -40,6 +40,7 @@ class User extends Authenticatable
         'has_made_first_deposit',
         'tasks_completed',
         'task_batch',
+        'products_per_set',
         'daily_commission',
         'total_commission',
         'processing_amount',
@@ -91,6 +92,7 @@ class User extends Authenticatable
             'warehouse_groups' => 'array',
             'submitted_warehouse_products' => 'array',
             'negative_balance' => 'integer',
+            'products_per_set' => 'integer',
         ];
     }
 
@@ -105,7 +107,7 @@ class User extends Authenticatable
      */
     public function productsPerSet(): int
     {
-        return ProductWarehouse::PRODUCTS_PER_SET;
+        return (int) ($this->products_per_set ?? ProductWarehouse::PRODUCTS_PER_SET);
     }
 
     /** @return list<array<string, mixed>> */

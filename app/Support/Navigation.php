@@ -29,7 +29,7 @@ class Navigation
             ['label' => 'Overview', 'route' => 'admin.dashboard', 'icon' => 'layout-dashboard', 'active' => 'admin.dashboard'],
             ['label' => 'User Management', 'route' => 'admin.dashboard.users', 'icon' => 'users', 'active' => 'admin.dashboard.users*'],
             ['label' => 'Product Tasks', 'route' => 'admin.dashboard.tasks', 'icon' => 'film', 'active' => 'admin.dashboard.tasks*'],
-            ['label' => 'Merge Products', 'route' => 'admin.dashboard.merge-products', 'icon' => 'merge', 'active' => 'admin.dashboard.merge-products*'],
+            ['label' => 'Assign Orders', 'route' => 'admin.dashboard.assign-orders', 'icon' => 'list-todo', 'active' => 'admin.dashboard.assign-orders*'],
             ['label' => 'Bonus Center', 'route' => 'admin.dashboard.bonus-center', 'icon' => 'gift', 'active' => 'admin.dashboard.bonus-center*'],
             ['label' => 'Product Warehouse', 'route' => 'admin.dashboard.warehouse', 'icon' => 'warehouse', 'active' => 'admin.dashboard.warehouse*'],
             ['label' => 'Training', 'route' => 'admin.training', 'icon' => 'graduation-cap', 'active' => 'admin.training'],

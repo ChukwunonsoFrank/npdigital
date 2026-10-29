@@ -27,6 +27,7 @@ beforeEach(function () {
     $this->user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -240,6 +241,7 @@ test('starting a task with no tasks for membership level dispatches message', fu
     $user = User::factory()->create([
         'membership_level' => 'Platinum',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -258,6 +260,7 @@ test('on hold user at task limit gets extra deposit message', function () {
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 30,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -315,6 +318,7 @@ test('user with balance below membership minimum balance gets toast', function (
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -363,6 +367,7 @@ test('user with insufficient balance gets insufficient balance toast', function 
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 500,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -372,7 +377,67 @@ test('user with insufficient balance gets insufficient balance toast', function 
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertDispatched('insufficient-balance', message: 'Insufficient balance to complete task. Top up to continue.');
+        ->assertDispatched('insufficient-balance', message: 'Insufficient balance to complete task. Top up at least $95.00 to continue.');
+});
+
+test('real user spends the wallet balance even when a training balance exists', function () {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 145040,
+        'training_balance' => 2000,
+        'has_made_first_deposit' => true,
+        'tasks_completed' => 1,
+        'task_batch' => 0,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('insufficient-balance')
+        ->assertSet('showTaskModal', true);
+});
+
+test('training account spends the training balance instead of the wallet balance', function () {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'is_training' => true,
+        'balance' => 145040,
+        'training_balance' => 2000,
+        'tasks_completed' => 1,
+        'task_batch' => 0,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertSet('showTaskModal', false)
+        ->assertDispatched('insufficient-balance', message: 'Insufficient balance to complete task. Top up at least $80.00 to continue.');
+});
+
+test('training account with a funded training balance can start a task', function () {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'is_training' => true,
+        'balance' => 0,
+        'training_balance' => 50000,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('insufficient-balance')
+        ->assertSet('showTaskModal', true);
 });
 
 test('completing a full task set moves user to next task batch', function () {
@@ -412,12 +477,12 @@ test('completing a full task set moves user to next task batch', function () {
         ->and($user->training_balance)->toBe(50050);
 });
 
-test('user in second task batch without first deposit is blocked from starting tasks', function () {
+test('user without a first deposit cannot start tasks', function (int $taskBatch) {
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
-        'task_batch' => 1,
+        'task_batch' => $taskBatch,
         'has_made_first_deposit' => false,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -427,8 +492,11 @@ test('user in second task batch without first deposit is blocked from starting t
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertDispatched('task-limit-reached', message: 'Your free set is complete. Deposit an additional $100 to continue with the remaining sets of tasks.');
-});
+        ->assertSet('showTaskModal', false)
+        ->assertDispatched('deposit-required', message: 'You need to make your first deposit of $100 before you can start tasks.');
+
+    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
+})->with([0, 1]);
 
 test('user who has made first deposit can continue later batches', function () {
     $user = User::factory()->create([
@@ -497,6 +565,7 @@ test('user with a required upgrade cannot start tasks', function () {
         'membership_level' => 'Normal',
         'required_upgrade_level' => 'Diamond',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -590,6 +659,7 @@ test('user who upgraded to the required level can start and submit tasks', funct
         'membership_level' => 'Gold',
         'required_upgrade_level' => 'Silver',
         'balance' => 50000,
+        'has_made_first_deposit' => true,
         'tasks_completed' => 0,
         'daily_commission' => 0,
         'total_commission' => 0,

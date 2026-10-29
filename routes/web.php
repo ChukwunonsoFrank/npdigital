@@ -17,10 +17,10 @@ use App\Livewire\Admin\AdminStrategyDetails;
 use App\Livewire\Admin\AdminTaskDetails;
 use App\Livewire\Admin\AdminTasks;
 use App\Livewire\Admin\AdminWithdrawals;
+use App\Livewire\Admin\AssignOrders;
 use App\Livewire\Admin\BonusCenter as AdminBonusCenter;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EmailBroadcast;
-use App\Livewire\Admin\MergeProducts;
 use App\Livewire\Admin\PaymentMethodDetails;
 use App\Livewire\Admin\PaymentMethods;
 use App\Livewire\Admin\Payments;
@@ -315,9 +315,9 @@ Route::middleware(['auth', 'admin'])
         Route::get('/product-tasks', AdminTasks::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.tasks');
-        Route::get('/merge-products', MergeProducts::class)
+        Route::get('/assign-orders', AssignOrders::class)
             ->middleware(['auth', 'verified'])
-            ->name('dashboard.merge-products');
+            ->name('dashboard.assign-orders');
         Route::get('/bonus-center', AdminBonusCenter::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.bonus-center');

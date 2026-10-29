@@ -152,7 +152,27 @@ it('validates group coordinates and assigns a populated group', function (int $d
 
     $component->assertHasNoErrors();
     expect($user->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'a']);
-})->with([[0, 'a', true], [6, 'b', true], [1, 'c', true], [1, 'a', false]]);
+})->with([[0, 'a', true], [6, 'b', true], [1, 'd', true], [1, 'a', false]]);
+
+it('rejects assigning the empty group c until products are added', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['membership_level' => 'Normal']);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)->call('openSetProducts')
+        ->call('assignWarehouseGroup', 1, 'c')
+        ->assertHasErrors(['warehouseGroup']);
+
+    expect($user->fresh()->warehouseGroup())->toBeNull();
+
+    WarehouseProduct::factory()->create(['level' => 'normal', 'day' => 1, 'group_key' => 'c']);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)->call('openSetProducts')
+        ->call('assignWarehouseGroup', 1, 'c')->assertHasNoErrors();
+
+    expect($user->fresh()->warehouseGroup())->toBe(['day' => 1, 'group' => 'c']);
+});
 
 it('forbids non admins from opening or assigning warehouse groups', function () {
     $user = User::factory()->create(['is_admin' => false]);

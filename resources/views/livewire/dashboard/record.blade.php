@@ -55,7 +55,7 @@
                         <p class="mt-0.5 text-xs text-muted-foreground">Cost:
                             <span class="font-semibold text-foreground">${{ number_format((float) $task->cost, 2) }}</span>
                             &middot; Profit:
-                            <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * (($task->commission_percentage ?? $commissionPercentage) / 100), 2) }}</span>
+                            <span class="font-semibold text-green-600">${{ number_format($task->profit($commissionPercentage), 2) }}</span>
                         </p>
                         <p class="mt-0.5 text-[10px] text-amber-600">Tap to submit this product</p>
                     </div>
@@ -83,7 +83,7 @@
                                     <p class="text-xs text-muted-foreground">Cost:
                                         <span class="font-semibold text-foreground">${{ number_format((float) $task->cost, 2) }}</span>
                                         &middot; Profit:
-                                        <span class="font-semibold text-green-600">${{ number_format((float) $task->cost * (($task->commission_percentage ?? $commissionPercentage) / 100), 2) }}</span>
+                                        <span class="font-semibold text-green-600">${{ number_format($task->profit($commissionPercentage), 2) }}</span>
                                     </p>
                                     <p class="mt-0.5 text-[10px] text-muted-foreground">
                                         {{ $task->created_at->format('M d, Y h:i A') }}</p>
@@ -110,7 +110,8 @@
     </div>
 
     <x-dashboard.task-modal :pending-task="$pendingTask" :commission="$commission"
-        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert" />
+        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert"
+        :top-up-amount="$topUpAmount" />
 </div>
 
 <script>
@@ -155,6 +156,10 @@
         });
 
         $wire.on('upgrade-required', (event) => {
+            toast(event.message)
+        });
+
+        $wire.on('insufficient-balance', (event) => {
             toast(event.message)
         });
     </script>

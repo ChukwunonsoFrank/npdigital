@@ -76,7 +76,7 @@ it('opens and closes a selected user details modal without exposing their transa
         ->assertSee('User Details')
         ->assertSee('Viewing profile for Daniella Dom')
         ->assertSee('$10.00')
-        ->assertSee('Add Merge Product')
+        ->assertSee('Assign Orders')
         ->assertSee('Delete Account')
         ->assertDontSee('00000000')
         ->call('closeUserDetails')
@@ -1032,14 +1032,14 @@ it('refuses to delete an administrator account', function () {
     expect(User::query()->find($targetAdmin->id))->not->toBeNull();
 });
 
-it('redirects the user detail merge action to the merge products page', function () {
+it('redirects the user detail order action to the assign orders page', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['is_admin' => false]);
 
     Livewire::actingAs($admin)->test(Users::class)
         ->call('showUserDetails', $user->id)
-        ->call('openMergeProducts')
-        ->assertRedirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
+        ->call('openAssignOrders')
+        ->assertRedirect(route('admin.dashboard.assign-orders', ['user' => $user->id]));
 });
 
 it('shows merge tasks and negative balance in the task account summary', function () {
@@ -1064,7 +1064,7 @@ it('shows merge tasks and negative balance in the task account summary', functio
         ->assertSee('Negative balance')
         ->assertSee('-$50.00')
         ->assertSee('5 / 30')
-        ->assertSee('Add Merge Product')
+        ->assertSee('Assign Orders')
         ->assertDontSee('Premium Tasks');
 });
 

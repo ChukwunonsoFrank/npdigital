@@ -71,62 +71,92 @@
 
                                     @if ($openGroup === $group)
                                         <div class="pb-2 pt-3">
-                                            <div class="mb-3 flex flex-wrap items-center justify-end gap-2">
-                                                <button type="button" wire:click="openAddProduct"
-                                                    class="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                                                    <x-dashboard.icon name="plus" class="h-3.5 w-3.5" /> Add Product
-                                                </button>
-                                            </div>
-
-                                            <div
-                                                class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                                @foreach ($groupData['items'] as $product)
-                                                    <div wire:key="{{ $product['id'] }}"
-                                                        class="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                                                        <div
-                                                            class="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted">
-                                                            <x-dashboard.icon name="image"
-                                                                class="h-10 w-10 text-muted-foreground/40" />
-                                                            @if ($product['image_url'])
-                                                                <img src="{{ $product['image_url'] }}"
-                                                                    alt="{{ $product['name'] }}" loading="lazy"
-                                                                    class="absolute inset-0 h-full w-full object-cover">
-                                                                <x-product-brand-logo :brand="$product['brand']" size="sm" />
-                                                            @endif
+                                            @if ($groupData['items'] === [])
+                                                <div
+                                                    class="rounded-xl border border-dashed border-border bg-card px-4 py-10">
+                                                    <div
+                                                        class="flex flex-col items-center gap-3 text-center">
+                                                        <span
+                                                            class="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                                                            <x-dashboard.icon name="package"
+                                                                class="h-6 w-6 text-muted-foreground" />
+                                                        </span>
+                                                        <div class="space-y-1">
+                                                            <p class="text-sm font-semibold text-foreground">
+                                                                No products in this group yet</p>
+                                                            <p class="text-xs text-muted-foreground">Group
+                                                                {{ strtoupper($group) }} is empty. Add the first
+                                                                product to get started.</p>
                                                         </div>
-                                                        <div class="flex-1 space-y-1 p-3">
-                                                            <p class="truncate text-sm font-semibold text-foreground"
-                                                                title="{{ $product['name'] }}">{{ $product['name'] }}
-                                                            </p>
-                                                            <p class="text-sm font-bold text-primary">
-                                                                ${{ number_format($product['price']) }}</p>
-                                                            <p class="text-xs font-medium text-[#2bab8b] dark:text-emerald-400">
-                                                                {{ $product['commission'] }}% comm</p>
+                                                        <button type="button" wire:click="openAddProduct"
+                                                            class="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                            <x-dashboard.icon name="plus"
+                                                                class="h-3.5 w-3.5" /> Add Product
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="mb-3 flex flex-wrap items-center justify-end gap-2">
+                                                    <button type="button" wire:click="openAddProduct"
+                                                        class="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                        <x-dashboard.icon name="plus" class="h-3.5 w-3.5" /> Add
+                                                        Product
+                                                    </button>
+                                                </div>
+
+                                                <div
+                                                    class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                                    @foreach ($groupData['items'] as $product)
+                                                        <div wire:key="{{ $product['id'] }}"
+                                                            class="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                                                             <div
-                                                                class="flex items-center gap-1 text-xs text-muted-foreground">
-                                                                <x-dashboard.icon name="users" class="h-3 w-3" />
-                                                                {{ $product['assigned'] }}/{{ $product['total'] }}
+                                                                class="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted">
+                                                                <x-dashboard.icon name="image"
+                                                                    class="h-10 w-10 text-muted-foreground/40" />
+                                                                @if ($product['image_url'])
+                                                                    <img src="{{ $product['image_url'] }}"
+                                                                        alt="{{ $product['name'] }}" loading="lazy"
+                                                                        class="absolute inset-0 h-full w-full object-cover">
+                                                                    <x-product-brand-logo :brand="$product['brand']" size="sm" />
+                                                                @endif
+                                                            </div>
+                                                            <div class="flex-1 space-y-1 p-3">
+                                                                <p class="truncate text-sm font-semibold text-foreground"
+                                                                    title="{{ $product['name'] }}">{{ $product['name'] }}
+                                                                </p>
+                                                                <p class="text-sm font-bold text-primary">
+                                                                    ${{ number_format($product['price']) }}</p>
+                                                                <p class="text-xs font-medium text-[#2bab8b] dark:text-emerald-400">
+                                                                    {{ $product['commission'] }}% comm</p>
+                                                                <div
+                                                                    class="flex items-center gap-1 text-xs text-muted-foreground">
+                                                                    <x-dashboard.icon name="users"
+                                                                        class="h-3 w-3" />
+                                                                    {{ $product['assigned'] }}/{{ $product['total'] }}
+                                                                </div>
+                                                            </div>
+                                                            <div class="flex items-stretch border-t border-border">
+                                                                <button type="button"
+                                                                    wire:click="openEditProduct('{{ $product['id'] }}')"
+                                                                    class="flex h-9 flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                                    aria-label="Edit {{ $product['name'] }}">
+                                                                    <x-dashboard.icon name="pencil"
+                                                                        class="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <div class="w-px bg-border"></div>
+                                                                <button type="button"
+                                                                    wire:click="deleteProduct('{{ $product['id'] }}')"
+                                                                    wire:confirm="Delete this product? This cannot be undone."
+                                                                    class="flex h-9 flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                                    aria-label="Delete {{ $product['name'] }}">
+                                                                    <x-dashboard.icon name="trash-2"
+                                                                        class="h-3.5 w-3.5" />
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                        <div class="flex items-stretch border-t border-border">
-                                                            <button type="button"
-                                                                wire:click="openEditProduct('{{ $product['id'] }}')"
-                                                                class="flex h-9 flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                                aria-label="Edit {{ $product['name'] }}">
-                                                                <x-dashboard.icon name="pencil" class="h-3.5 w-3.5" />
-                                                            </button>
-                                                            <div class="w-px bg-border"></div>
-                                                            <button type="button"
-                                                                wire:click="deleteProduct('{{ $product['id'] }}')"
-                                                                wire:confirm="Delete this product? This cannot be undone."
-                                                                class="flex h-9 flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                                aria-label="Delete {{ $product['name'] }}">
-                                                                <x-dashboard.icon name="trash-2" class="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>

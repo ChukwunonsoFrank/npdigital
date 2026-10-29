@@ -264,6 +264,10 @@
             toast(event.message)
         });
 
+        $wire.on('deposit-required', (event) => {
+            toast(event.message)
+        });
+
         $wire.on('minimum-balance-required', (event) => {
             toast(event.message)
         });

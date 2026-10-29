@@ -124,7 +124,7 @@ it('rejects invalid users, days, groups and empty or exhausted assignments', fun
     Livewire::actingAs($admin)->test(AdminTasks::class)
         ->call('openAssignment')->set('assignmentUserIds', [(string) $admin->id])->call('saveAssignment')
         ->assertHasErrors('assignmentUserIds.0')
-        ->set('assignmentUserIds', [(string) $user->id])->set('assignmentSelection', '6-c')
+        ->set('assignmentUserIds', [(string) $user->id])->set('assignmentSelection', '6-d')
         ->call('saveAssignment')->assertHasErrors(['assignmentDay', 'assignmentGroup'])
         ->set('assignmentSelection', '1-a')->call('saveAssignment')
         ->assertHasErrors('assignmentSelection')
@@ -147,10 +147,10 @@ it('opens the task account summary and links to the merge product builder for ei
         ->dispatch('show-task-user', userId: $user->id)
         ->assertSee($isTraining ? 'Virtual/Training' : 'Real Account')
         ->assertSee('VIP Level 3')->assertSee('$1,103.21')->assertSee('$43.21')->assertSee('5 / 30')
-        ->assertSee('Merge Tasks')->assertSee('-$50.00')->assertSee('Add Merge Product')
+        ->assertSee('Merge Tasks')->assertSee('-$50.00')->assertSee('Assign Orders')
         ->assertDontSee('Premium Tasks')
-        ->call('openMergeProducts')
-        ->assertRedirect(route('admin.dashboard.merge-products', ['user' => $user->id]));
+        ->call('openAssignOrders')
+        ->assertRedirect(route('admin.dashboard.assign-orders', ['user' => $user->id]));
 
     Livewire::actingAs($admin)->test(Users::class, ['taskSummary' => true])
         ->dispatch('show-task-user', userId: $user->id)
@@ -198,7 +198,7 @@ it('rejects mixed levels and invalid groups without partially assigning users', 
     $component = Livewire::actingAs($admin)->test(AdminTasks::class)->call('openAssignment')
         ->set('assignmentUserIds', [(string) $first->id, (string) $second->id])->call('nextAssignmentStep')->assertHasErrors('assignmentUserIds');
     $second->update(['membership_level' => 'Normal']);
-    $component->call('nextAssignmentStep')->set('assignmentSelection', '6-c')->call('saveAssignment')
+    $component->call('nextAssignmentStep')->set('assignmentSelection', '6-d')->call('saveAssignment')
         ->assertHasErrors(['assignmentDay', 'assignmentGroup'])
         ->set('assignmentSelection', '1-a')->call('saveAssignment')->assertHasNoErrors();
 

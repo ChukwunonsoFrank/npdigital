@@ -162,6 +162,58 @@ it('builds the warehouse product data for every membership level', function () {
     }
 });
 
+it('shows an empty group c with an add product action for every day', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $component = Livewire::actingAs($admin)->test(Warehouse::class);
+
+    foreach (range(1, ProductWarehouse::DAY_COUNT) as $day) {
+        expect(ProductWarehouse::groupItems('normal', $day, 'c'))->toBe([])
+            ->and(ProductWarehouse::groupCounts('normal')[$day]['c'])->toBe(0);
+
+        $component->call('toggleDay', $day)
+            ->call('toggleGroup', 'c')
+            ->assertSee('Group C')
+            ->assertSee('No products in this group yet')
+            ->assertSee('Add Product');
+    }
+});
+
+it('keeps group c empty for generated membership levels', function () {
+    WarehouseProduct::query()->delete();
+
+    expect(ProductWarehouse::groupItems('normal', 1, 'c'))->toBe([])
+        ->and(ProductWarehouse::groupCounts('normal')[1]['c'])->toBe(0)
+        ->and(ProductWarehouse::legacyGroupItems('normal', 1, 'c'))->toBe([]);
+});
+
+it('adds the first product to group c', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::actingAs($admin)
+        ->test(Warehouse::class)
+        ->call('toggleDay', 1)
+        ->call('toggleGroup', 'c')
+        ->assertSee('No products in this group yet')
+        ->call('openAddProduct')
+        ->assertSet('showProductModal', true)
+        ->set('productName', 'Group C Starter')
+        ->set('productPrice', '45')
+        ->set('productCommission', '0.5')
+        ->call('saveProduct')
+        ->assertHasNoErrors()
+        ->assertSet('showProductModal', false)
+        ->assertSee('Group C Starter')
+        ->assertSee('1 items')
+        ->assertSee('61 products');
+
+    $product = WarehouseProduct::query()->where('name', 'Group C Starter')->first();
+
+    expect($product)->not->toBeNull()
+        ->and($product->group_key)->toBe('c')
+        ->and($product->is_custom)->toBeTrue()
+        ->and(ProductWarehouse::groupItems('normal', 1, 'c'))->toHaveCount(1);
+});
+
 it('generates the same warehouse products on every call', function () {
     $first = ProductWarehouse::groupItems('normal', 1, 'a');
     $second = ProductWarehouse::groupItems('normal', 1, 'a');

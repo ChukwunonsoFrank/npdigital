@@ -80,9 +80,8 @@ trait CompletesTasks
             ->where('name', $user->membership_level)
             ->first();
 
-        if ($task->commission_percentage !== null || $membershipLevel) {
-            $commission = (float) $task->cost * (($task->commission_percentage ?? $membershipLevel->percentage) / 100);
-            $commissionInCents = (int) round($commission * 100);
+        if ($task->commission_amount !== null || $task->commission_percentage !== null || $membershipLevel) {
+            $commissionInCents = $task->profitInCents((float) ($membershipLevel?->percentage ?? 0));
             $user->increment('daily_commission', $commissionInCents);
             $user->increment('total_commission', $commissionInCents);
 

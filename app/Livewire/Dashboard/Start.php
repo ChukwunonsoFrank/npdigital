@@ -17,16 +17,13 @@ class Start extends Component
     use CompletesTasks;
     use HasTaskModal;
 
-    private function usesTrainingBalance(User $user): bool
+    /**
+     * The wallet that funds tasks: training accounts spend their loaded training
+     * balance, everyone else spends the balance shown on the dashboard.
+     */
+    private function availableTaskBalanceInCents(User $user): int
     {
-        return $user->task_batch === 0
-            && ! $user->has_made_first_deposit
-            && $user->training_balance > 0;
-    }
-
-    private function getActiveTaskBalanceInCents(User $user): int
-    {
-        if ($this->usesTrainingBalance($user)) {
+        if ($user->is_training && (int) $user->training_balance > 0) {
             return (int) $user->training_balance;
         }
 
@@ -48,17 +45,20 @@ class Start extends Component
             return;
         }
 
-        $activeTaskBalanceInCents = $this->getActiveTaskBalanceInCents($user);
-        $productsPerSet = $user->productsPerSet();
-
-        if ($user->task_batch >= User::DAILY_TASK_SETS) {
-            $this->dispatch('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.')->self();
+        if (! $user->is_training && ! $user->has_made_first_deposit) {
+            $this->dispatch(
+                'deposit-required',
+                message: 'You need to make your first deposit of $100 before you can start tasks.',
+            )->self();
 
             return;
         }
 
-        if ($user->task_batch >= 1 && ! $user->has_made_first_deposit) {
-            $this->dispatch('task-limit-reached', message: 'Your free set is complete. Deposit an additional $100 to continue with the remaining sets of tasks.')->self();
+        $activeTaskBalanceInCents = $this->availableTaskBalanceInCents($user);
+        $productsPerSet = $user->productsPerSet();
+
+        if ($user->task_batch >= User::DAILY_TASK_SETS) {
+            $this->dispatch('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.')->self();
 
             return;
         }
@@ -150,10 +150,17 @@ class Start extends Component
 
         if ($isMerge) {
             $user->update([
-                'negative_balance' => max(0, $taskCostInCents - $activeTaskBalanceInCents),
+                'negative_balance' => $task->merge_negative_balance !== null
+                    ? (int) $task->merge_negative_balance
+                    : max(0, $taskCostInCents - $activeTaskBalanceInCents),
             ]);
         } elseif ($activeTaskBalanceInCents < $taskCostInCents) {
-            $this->dispatch('insufficient-balance', message: 'Insufficient balance to complete task. Top up to continue.')->self();
+            $shortfallInCents = $taskCostInCents - $activeTaskBalanceInCents;
+
+            $this->dispatch(
+                'insufficient-balance',
+                message: 'Insufficient balance to complete task. Top up at least $'.number_format($shortfallInCents / 100, 2).' to continue.',
+            )->self();
 
             return;
         }
@@ -200,7 +207,12 @@ class Start extends Component
 
         $pendingTask = $this->pendingTask();
         $commissionPercentage = (float) ($pendingTask?->commission_percentage ?? $membershipLevel?->percentage ?? 0);
-        $commission = $pendingTask ? (float) $pendingTask->cost * ($commissionPercentage / 100) : 0;
+
+        if ($pendingTask?->commission_amount !== null && (float) $pendingTask->cost > 0) {
+            $commissionPercentage = round(((int) $pendingTask->commission_amount / 100) / (float) $pendingTask->cost * 100, 2);
+        }
+
+        $commission = $pendingTask ? $pendingTask->profit((float) ($membershipLevel?->percentage ?? 0)) : 0;
 
         return view('livewire.dashboard.start', [
             'user' => $user,

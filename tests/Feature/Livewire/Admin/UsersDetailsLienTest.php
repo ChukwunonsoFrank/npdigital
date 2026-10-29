@@ -91,11 +91,12 @@ it('marks first deposit as made when admin credits at ten dollar balance', funct
     expect($user->has_made_first_deposit)->toBeTrue();
 });
 
-it('prevents requesting deposit for users still in first task batch without first deposit', function () {
+it('allows requesting a deposit before the first task batch', function () {
     $admin = User::factory()->create();
     $user = User::factory()->create([
         'task_batch' => 0,
         'has_made_first_deposit' => false,
+        'balance' => 1000,
         'lien_status' => 'off_hold',
         'lien_amount' => null,
     ]);
@@ -104,15 +105,11 @@ it('prevents requesting deposit for users still in first task batch without firs
         ->test(UsersDetails::class, ['id' => $user->id])
         ->set('depositAmount', 200)
         ->call('requestDeposit')
-        ->assertDispatched(
-            'notify',
-            message: 'User must complete the first task batch and make the first deposit before requesting a deposit.',
-            type: 'error',
-        );
+        ->assertDispatched('notify', message: 'Deposit request sent successfully', type: 'success');
 
     $user->refresh();
-    expect($user->lien_status)->toBe('off_hold');
-    expect($user->lien_amount)->toBeNull();
+    expect($user->lien_status)->toBe('on_hold');
+    expect($user->lien_amount)->toBe('21000');
 });
 
 it('allows requesting deposit after first task batch', function () {

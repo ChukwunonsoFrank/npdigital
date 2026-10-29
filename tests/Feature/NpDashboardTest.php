@@ -13,6 +13,7 @@ use App\Livewire\Dashboard\Record as DashboardRecord;
 use App\Livewire\Dashboard\Start as DashboardStart;
 use App\Livewire\Dashboard\TermsAndConditions as DashboardTerms;
 use App\Models\Event;
+use App\Models\PlatformSetting;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -409,6 +410,36 @@ it('renders the floating support bubble on the user dashboard shell', function (
         ->toContain('Support Services')
         ->toContain('Chat with our support team')
         ->toContain('https://code.jivosite.com/chatpage/itW0erCyp0');
+});
+
+it('shows the WhatsApp and Telegram support links configured in platform settings', function () {
+    $this->actingAs(User::factory()->create());
+    PlatformSetting::factory()->create([
+        'whatsapp_support_number' => '+17044252607',
+        'telegram_support_username' => 'support_bot',
+    ]);
+
+    $html = view('components.layouts.dashboard', [
+        'slot' => new HtmlString('<p>page content</p>'),
+    ])->render();
+
+    expect($html)
+        ->toContain('https://wa.me/17044252607')
+        ->toContain('https://t.me/support_bot')
+        ->toContain('assets/img/whatsapp.png')
+        ->toContain('assets/img/telegram.png');
+});
+
+it('hides the WhatsApp and Telegram support links when they are not configured', function () {
+    $this->actingAs(User::factory()->create());
+
+    $html = view('components.layouts.dashboard', [
+        'slot' => new HtmlString('<p>page content</p>'),
+    ])->render();
+
+    expect($html)
+        ->not->toContain('https://wa.me/')
+        ->not->toContain('https://t.me/');
 });
 
 it('hides the sidebar toggle on mobile for the user shell but keeps it for admin', function () {

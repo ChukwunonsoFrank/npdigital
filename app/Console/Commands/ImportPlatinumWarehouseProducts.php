@@ -38,7 +38,7 @@ class ImportPlatinumWarehouseProducts extends Command
         $products = [];
 
         for ($day = 1; $day <= ProductWarehouse::DAY_COUNT; $day++) {
-            foreach (ProductWarehouse::GROUPS as $group) {
+            foreach (ProductWarehouse::CATALOG_GROUPS as $group) {
                 $notesPath = sprintf('%s/notes-platinum-day%d-group%s.txt', $sourcePath, $day, strtoupper($group));
                 $photosPath = sprintf('%s/warehouse-platinum-day%d-group%s-photos', $sourcePath, $day, strtoupper($group));
                 $names = array_values(array_filter(array_map('trim', file($notesPath, FILE_IGNORE_NEW_LINES))));

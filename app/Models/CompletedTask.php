@@ -24,11 +24,13 @@ class CompletedTask extends Model
         'status',
         'review',
         'commission_percentage',
+        'commission_amount',
         'warehouse_product_id',
         'available_after_tasks',
         'is_merge',
         'merge_items',
         'merge_position',
+        'merge_negative_balance',
     ];
 
     protected static function booted(): void
@@ -41,6 +43,25 @@ class CompletedTask extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Commission owed for this task, preferring a fixed amount when one was set.
+     */
+    public function profitInCents(?float $fallbackPercentage = null): int
+    {
+        if ($this->commission_amount !== null) {
+            return (int) $this->commission_amount;
+        }
+
+        $percentage = (float) ($this->commission_percentage ?? $fallbackPercentage ?? 0);
+
+        return (int) round((float) $this->cost * ($percentage / 100) * 100);
+    }
+
+    public function profit(?float $fallbackPercentage = null): float
+    {
+        return $this->profitInCents($fallbackPercentage) / 100;
     }
 
     /**

@@ -58,7 +58,7 @@ class Optimize extends Component
             ->where('name', $user->membership_level)
             ->first();
 
-        $commission = (float) $task->cost * (($task->commission_percentage ?? $membershipLevel?->percentage ?? 0) / 100);
+        $commission = $task->profit((float) ($membershipLevel?->percentage ?? 0));
 
         return view('livewire.dashboard.optimize', [
             'task' => $task,

@@ -31,6 +31,7 @@ class UserFactory extends Factory
             'balance' => 0,
             'training_balance' => 0,
             'has_made_first_deposit' => false,
+            'is_training' => false,
             'tasks_completed' => 0,
             'task_batch' => 0,
             'daily_commission' => 0,

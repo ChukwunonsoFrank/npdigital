@@ -12,10 +12,11 @@ use Illuminate\Support\Str;
 /**
  * Builds the product warehouse shown on the admin warehouse page.
  *
- * Every membership level has five days, each holding an "A" and a "B" group of
- * products. Groups are drawn from a level product pool that combines the level
- * catalog in resources/data/warehouse.json with generated variants, mirroring
- * the warehouse generator of the reference platform.
+ * Every membership level has five days. The "A" and "B" groups of each day are
+ * drawn from a level product pool that combines the level catalog in
+ * resources/data/warehouse.json with generated variants, mirroring the warehouse
+ * generator of the reference platform. Extra groups start empty for admins to
+ * fill manually.
  */
 class ProductWarehouse
 {
@@ -27,7 +28,14 @@ class ProductWarehouse
     public const PRODUCTS_PER_SET = 30;
 
     /** @var list<string> */
-    public const GROUPS = ['a', 'b'];
+    public const GROUPS = ['a', 'b', 'c'];
+
+    /**
+     * Groups seeded from the generated catalog. Groups outside this list start empty.
+     *
+     * @var list<string>
+     */
+    public const CATALOG_GROUPS = ['a', 'b'];
 
     /** @var array<string, mixed>|null */
     private static ?array $data = null;
@@ -106,11 +114,10 @@ class ProductWarehouse
         }
 
         $base = self::productCount($level);
-
-        $counts = [];
+        $counts = self::emptyGroupCounts();
 
         for ($day = 1; $day <= self::DAY_COUNT; $day++) {
-            foreach (self::GROUPS as $group) {
+            foreach (self::CATALOG_GROUPS as $group) {
                 $counts[$day][$group] = $base;
             }
         }
@@ -240,6 +247,37 @@ class ProductWarehouse
     }
 
     /**
+     * Every product available for a level across all day groups.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function levelProducts(string $level): array
+    {
+        $products = [];
+        $seen = [];
+
+        for ($day = 1; $day <= self::DAY_COUNT; $day++) {
+            foreach (self::GROUPS as $group) {
+                foreach (self::groupItems($level, $day, $group) as $product) {
+                    if (isset($seen[$product['id']])) {
+                        continue;
+                    }
+
+                    $seen[$product['id']] = true;
+                    $products[] = [
+                        ...$product,
+                        'level' => $level,
+                        'day' => $day,
+                        'group' => $group,
+                    ];
+                }
+            }
+        }
+
+        return $products;
+    }
+
+    /**
      * Get the legacy generated products used to retain the existing pricing pattern during import.
      *
      * @return list<array{id: string, name: string, image: string|null, brand: string, price: int, commission: float, description: string, assigned: int, total: int}>
@@ -323,11 +361,15 @@ class ProductWarehouse
      */
     private static function baseGroupItems(string $level, int $day, string $group): array
     {
+        if (! in_array($group, self::CATALOG_GROUPS, true)) {
+            return [];
+        }
+
         $count = self::productCount($level);
         $levelKey = self::dataLevel($level);
         $levelIndex = (int) array_search($levelKey, self::data()['levels'], true);
-        $groupIndex = (int) array_search($group, self::GROUPS, true);
-        $offset = (($day - 1) * count(self::GROUPS) + $groupIndex) * $count;
+        $groupIndex = (int) array_search($group, self::CATALOG_GROUPS, true);
+        $offset = (($day - 1) * count(self::CATALOG_GROUPS) + $groupIndex) * $count;
         $items = array_slice(self::pool($level), $offset, $count);
         $commission = self::commission($level);
         $seed = $day * 1000 + $levelIndex * 100 + ($groupIndex === 1 ? 50 : 0);

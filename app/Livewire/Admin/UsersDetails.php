@@ -229,22 +229,6 @@ class UsersDetails extends Component
 
     public function requestDeposit()
     {
-        $user = User::where('id', $this->id)->first();
-
-        if (
-            $user
-            && $user->task_batch === 0
-            && ! $user->has_made_first_deposit
-        ) {
-            $this->dispatch(
-                'notify',
-                message: 'User must complete the first task batch and make the first deposit before requesting a deposit.',
-                type: 'error',
-            );
-
-            return;
-        }
-
         $this->validate([
             'depositAmount' => ['required', 'numeric', 'min:0.01'],
         ], [

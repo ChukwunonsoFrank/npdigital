@@ -60,8 +60,8 @@
         @endif
 
         <div class="mt-4 flex flex-wrap gap-1.5">
-            <button type="button" wire:click="openMergeProducts" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <x-dashboard.icon name="merge" class="h-4 w-4" /> Add Merge Product
+            <button type="button" wire:click="openAssignOrders" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <x-dashboard.icon name="list-todo" class="h-4 w-4" /> Assign Orders
             </button>
             <button type="button" wire:click="openGoldenEgg" class="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-amber-500 px-3 text-xs font-medium text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <x-dashboard.icon name="egg" class="h-4 w-4" /> Golden Egg

@@ -65,7 +65,12 @@ class Record extends Component
 
         $pendingTask = $this->pendingTask();
         $pendingCommissionPercentage = (float) ($pendingTask?->commission_percentage ?? $commissionPercentage);
-        $commission = $pendingTask ? (float) $pendingTask->cost * ($pendingCommissionPercentage / 100) : 0;
+
+        if ($pendingTask?->commission_amount !== null && (float) $pendingTask->cost > 0) {
+            $pendingCommissionPercentage = round(((int) $pendingTask->commission_amount / 100) / (float) $pendingTask->cost * 100, 2);
+        }
+
+        $commission = $pendingTask ? $pendingTask->profit($commissionPercentage) : 0;
 
         return view('livewire.dashboard.record', [
             'pendingTasks' => $pendingTasks,
@@ -77,6 +82,7 @@ class Record extends Component
             'pendingCommissionPercentage' => $pendingCommissionPercentage,
             'pendingTask' => $pendingTask,
             'commission' => $commission,
+            'topUpAmount' => $pendingTask?->is_merge ? (int) $user->negative_balance : 0,
         ]);
     }
 }
