@@ -3,7 +3,6 @@
     'commission' => 0,
     'commissionPercentage' => 0,
     'rating' => 0,
-    'showPendingAlert' => false,
     'topUpAmount' => 0,
 ])
 
@@ -27,15 +26,7 @@
     x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
     class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-card shadow-xl">
     @if ($pendingTask)
-        @if ($showPendingAlert)
-            <div
-                class="flex items-center justify-center gap-1.5 bg-amber-50 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-600">
-                <x-dashboard.icon name="triangle-alert" class="h-4 w-4" />
-                Pending Product
-            </div>
-        @endif
-
-        <div class="relative max-h-[calc(90vh_-_44px)] overflow-y-auto p-5">
+        <div class="relative max-h-[90vh] overflow-y-auto p-5">
             <button type="button" wire:click="closeTaskModal" aria-label="Close"
                 class="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground">
                 <x-dashboard.icon name="x" class="h-5 w-5" />

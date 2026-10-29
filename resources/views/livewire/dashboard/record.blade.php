@@ -110,8 +110,7 @@
     </div>
 
     <x-dashboard.task-modal :pending-task="$pendingTask" :commission="$commission"
-        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :show-pending-alert="$showPendingAlert"
-        :top-up-amount="$topUpAmount" />
+        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :top-up-amount="$topUpAmount" />
 </div>
 
 <script>

@@ -159,7 +159,7 @@ test('record page shows pending tasks as tappable to submit', function () {
         ->assertSeeHtml('wire:click="openSubmission');
 });
 
-test('record page shows the pending product alert when opening an existing submission', function () {
+test('record page opens the task modal for an existing pending submission', function () {
     $pendingTask = CompletedTask::create([
         'user_id' => $this->user->id,
         'title' => 'Pending Task',
@@ -174,8 +174,8 @@ test('record page shows the pending product alert when opening an existing submi
         ->test(Record::class)
         ->call('openSubmission', $pendingTask->id)
         ->assertSet('showTaskModal', true)
-        ->assertSet('showPendingAlert', true)
-        ->assertSee('Pending Product');
+        ->assertSee('Pending Task')
+        ->assertDontSee('Pending Product');
 });
 
 test('record page does not show the pending call to action for approved tasks', function () {

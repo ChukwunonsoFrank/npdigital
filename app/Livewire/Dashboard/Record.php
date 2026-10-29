@@ -38,7 +38,7 @@ class Record extends Component
 
         session(['pending_task_id' => $task->id]);
 
-        $this->openTaskModal(pendingAlreadyExists: true);
+        $this->openTaskModal();
     }
 
     public function render()

@@ -17,8 +17,6 @@ trait HasTaskModal
 
     public bool $showTaskModal = false;
 
-    public bool $showPendingAlert = false;
-
     protected function pendingTask(): ?CompletedTask
     {
         return CompletedTask::query()
@@ -33,18 +31,16 @@ trait HasTaskModal
         $this->rating = ($rating === $this->rating) ? 0 : $rating;
     }
 
-    public function openTaskModal(bool $pendingAlreadyExists = false): void
+    public function openTaskModal(): void
     {
         $this->rating = 0;
         $this->review = '';
-        $this->showPendingAlert = $pendingAlreadyExists;
         $this->showTaskModal = true;
     }
 
     public function closeTaskModal(): void
     {
         $this->showTaskModal = false;
-        $this->showPendingAlert = false;
         $this->rating = 0;
         $this->review = '';
     }

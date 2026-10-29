@@ -394,7 +394,6 @@ it('shows the merge shortfall when opening a pending merge from the records page
     Livewire::actingAs($user)->test(Record::class)
         ->call('openSubmission', $merge->id)
         ->assertSet('showTaskModal', true)
-        ->assertSet('showPendingAlert', true)
         ->assertSee('Product optimization order')
         ->assertSee('Negative balance')
         ->assertSee('-$30.00')
