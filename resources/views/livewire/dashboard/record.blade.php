@@ -38,7 +38,8 @@
         </div>
 
         @foreach ($pendingTasks as $task)
-            <button type="button" wire:key="pending-{{ $task->id }}" wire:click="openSubmission({{ $task->id }})"
+            <button type="button" wire:key="pending-{{ $task->id }}"
+                @click="$dispatch('open-task-modal-{{ $task->id }}')"
                 class="block w-full rounded-lg border border-amber-300 bg-amber-50 p-3 text-left transition-colors hover:border-amber-400 hover:bg-amber-100">
                 <div class="flex items-start gap-3">
                     <div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
@@ -109,8 +110,12 @@
         @endif
     </div>
 
-    <x-dashboard.task-modal :pending-task="$pendingTask" :commission="$commission"
-        :commission-percentage="$pendingCommissionPercentage" :rating="$rating" :top-up-amount="$topUpAmount" />
+    @foreach ($pendingTaskModals as $modal)
+        <x-dashboard.task-modal :pending-task="$modal['task']" :commission="$modal['commission']"
+            :commission-percentage="$modal['commission_percentage']" :top-up-amount="$modal['top_up_amount']"
+            :open-event="'open-task-modal-'.$modal['task']->id"
+            wire:key="task-modal-{{ $modal['task']->id }}" />
+    @endforeach
 </div>
 
 <script>

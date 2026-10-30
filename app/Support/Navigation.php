@@ -5,16 +5,16 @@ namespace App\Support;
 class Navigation
 {
     /**
-     * @return array<int, array{label: string, route: string|null, icon: string, active: string|array<int, string>, mobile?: bool}>
+     * @return array<int, array{label: string, route: string|null, icon: string, active: string|array<int, string>, mobile?: bool, prefetch?: bool}>
      */
     public static function user(): array
     {
         return [
-            ['label' => 'Home', 'route' => 'dashboard', 'icon' => 'layout-dashboard', 'active' => 'dashboard', 'mobile' => true],
+            ['label' => 'Home', 'route' => 'dashboard', 'icon' => 'layout-dashboard', 'active' => 'dashboard', 'mobile' => true, 'prefetch' => true],
             ['label' => 'Start Tasks', 'route' => 'dashboard.start', 'icon' => 'send', 'active' => 'dashboard.start*', 'mobile' => true],
-            ['label' => 'Bonus Center', 'route' => 'dashboard.bonus-center', 'icon' => 'gift', 'active' => 'dashboard.bonus-center*', 'mobile' => false],
             ['label' => 'Records', 'route' => 'dashboard.record', 'icon' => 'file-text', 'active' => 'dashboard.record*', 'mobile' => true],
             ['label' => 'Wallet', 'route' => 'dashboard.wallet', 'icon' => 'wallet', 'active' => ['dashboard.wallet*', 'dashboard.deposit*', 'dashboard.withdraw*'], 'mobile' => true],
+            ['label' => 'Bonus Center', 'route' => 'dashboard.bonus-center', 'icon' => 'gift', 'active' => 'dashboard.bonus-center*', 'mobile' => false, 'prefetch' => true],
             ['label' => 'Notifications', 'route' => 'dashboard.notifications', 'icon' => 'bell', 'active' => 'dashboard.notifications*', 'mobile' => false],
             ['label' => 'Profile', 'route' => 'dashboard.account', 'icon' => 'circle-user-round', 'active' => 'dashboard.account*', 'mobile' => true],
         ];

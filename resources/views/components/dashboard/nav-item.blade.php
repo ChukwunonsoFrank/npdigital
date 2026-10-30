@@ -3,11 +3,13 @@
 @php
     $url = ! empty($item['route']) ? route($item['route']) : '#';
     $isActive = ! empty($item['active']) && request()->routeIs($item['active']);
+    $isCurrent = request()->url() === $url;
+    $prefetch = ! $isCurrent && ($item['prefetch'] ?? false);
     $base = 'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-none ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground h-8 text-sm [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 hover:text-sidebar-accent-foreground';
 @endphp
 
 <li data-sidebar="menu-item" class="group/menu-item relative" {{ $attributes }}>
-    <a href="{{ $url }}" wire:navigate data-sidebar="menu-button" data-size="default"
+    <a href="{{ $url }}" @if ($prefetch) wire:navigate.hover @else wire:navigate @endif data-sidebar="menu-button" data-size="default"
         data-active="{{ $isActive ? 'true' : 'false' }}"
         aria-current="{{ $isActive ? 'page' : 'false' }}"
         @class([

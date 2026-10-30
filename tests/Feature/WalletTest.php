@@ -40,13 +40,9 @@ it('adds a saved wallet and redirects back to the wallet page', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->call('openWalletModal')
-        ->assertSet('showWalletModal', true)
-        ->set('wallet_label', 'My BTC Wallet')
-        ->set('wallet_cryptocurrency', 'BTC')
-        ->set('wallet_address', 'bc1qexamplewalletaddress')
-        ->call('addWallet')
+        ->call('addWallet', 'My BTC Wallet', 'BTC', 'bc1qexamplewalletaddress')
         ->assertHasNoErrors()
+        ->assertDispatched('close-wallet-modal')
         ->assertRedirect(route('dashboard.wallet'));
 
     expect(WalletModel::where('user_id', $user->id)
@@ -61,10 +57,7 @@ it('validates the add wallet form', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->set('wallet_label', '')
-        ->set('wallet_cryptocurrency', '')
-        ->set('wallet_address', '')
-        ->call('addWallet')
+        ->call('addWallet', '', '', '')
         ->assertHasErrors([
             'wallet_label' => 'required',
             'wallet_cryptocurrency' => 'required',
@@ -136,14 +129,11 @@ it('opens the edit modal with prefilled wallet details', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->assertSet('showWalletModal', false)
-        ->call('openEditWallet', $wallet->id)
-        ->assertSet('showWalletModal', true)
-        ->assertSet('editingWalletId', $wallet->id)
-        ->assertSet('wallet_label', 'My Trust Wallet')
-        ->assertSet('wallet_cryptocurrency', 'USDT-TRC20')
-        ->assertSet('wallet_address', 'TQn9Y2khDD95J42FQtQTdwVVRZq5')
-        ->assertSee('Edit Wallet');
+        ->assertSeeHtml('data-wallet-id="'.$wallet->id.'"')
+        ->assertSeeHtml('data-wallet-label="My Trust Wallet"')
+        ->assertSeeHtml('data-wallet-crypto="USDT-TRC20"')
+        ->assertSeeHtml('data-wallet-address="TQn9Y2khDD95J42FQtQTdwVVRZq5"')
+        ->assertSee('Add New Wallet');
 });
 
 it('updates a saved wallet from the edit modal', function () {
@@ -158,12 +148,9 @@ it('updates a saved wallet from the edit modal', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->call('openEditWallet', $wallet->id)
-        ->set('wallet_label', 'Renamed Wallet')
-        ->set('wallet_cryptocurrency', 'BTC')
-        ->set('wallet_address', 'bc1qupdatedwalletaddress')
-        ->call('updateWallet')
+        ->call('updateWallet', $wallet->id, 'Renamed Wallet', 'BTC', 'bc1qupdatedwalletaddress')
         ->assertHasNoErrors()
+        ->assertDispatched('close-wallet-modal')
         ->assertRedirect(route('dashboard.wallet'));
 
     expect($wallet->refresh()->label)->toBe('Renamed Wallet')
@@ -183,11 +170,7 @@ it('validates the edit wallet form', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->call('openEditWallet', $wallet->id)
-        ->set('wallet_label', '')
-        ->set('wallet_cryptocurrency', '')
-        ->set('wallet_address', '')
-        ->call('updateWallet')
+        ->call('updateWallet', $wallet->id, '', '', '')
         ->assertHasErrors([
             'wallet_label' => 'required',
             'wallet_cryptocurrency' => 'required',
@@ -210,18 +193,9 @@ it('cannot edit another users wallet', function () {
 
     Livewire::actingAs($user)
         ->test(Wallet::class)
-        ->call('openEditWallet', $wallet->id)
-        ->assertSet('showWalletModal', false)
-        ->assertSet('editingWalletId', null);
-
-    Livewire::actingAs($user)
-        ->test(Wallet::class)
-        ->set('editingWalletId', $wallet->id)
-        ->set('wallet_label', 'Hacked Wallet')
-        ->set('wallet_cryptocurrency', 'BTC')
-        ->set('wallet_address', 'bc1qexamplewalletaddress')
-        ->call('updateWallet')
-        ->assertHasNoErrors();
+        ->call('updateWallet', $wallet->id, 'Hacked Wallet', 'BTC', 'bc1qexamplewalletaddress')
+        ->assertHasNoErrors()
+        ->assertDispatched('close-wallet-modal');
 
     expect($wallet->refresh()->label)->toBe('Other Wallet');
 });

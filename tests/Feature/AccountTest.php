@@ -82,6 +82,24 @@ test('account page shows the profile sections', function () {
         ->assertSee('Logout');
 });
 
+test('account page links to the bonus center and vip levels after certification', function () {
+    $user = User::factory()->create(['membership_level' => 'VIP0']);
+
+    $html = Livewire::actingAs($user)->test(Account::class)->html();
+
+    $certification = strpos($html, route('dashboard.certificate'));
+    $bonusCenter = strpos($html, route('dashboard.bonus-center'));
+    $vipLevels = strpos($html, route('dashboard.vip-levels'));
+    $faq = strpos($html, route('dashboard.faqs'));
+
+    expect($html)
+        ->toContain('Bonus Center')
+        ->toContain('VIP Levels')
+        ->and($certification)->toBeLessThan($bonusCenter)
+        ->and($bonusCenter)->toBeLessThan($vipLevels)
+        ->and($vipLevels)->toBeLessThan($faq);
+});
+
 test('account page renders inside the dashboard shell without legacy styles', function () {
     $user = User::factory()->create();
     $user->refresh();

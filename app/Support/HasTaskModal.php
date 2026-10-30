@@ -15,48 +15,33 @@ trait HasTaskModal
 
     public string $review = '';
 
-    public bool $showTaskModal = false;
-
-    protected function pendingTask(): ?CompletedTask
+    protected function pendingTask(?int $taskId = null): ?CompletedTask
     {
+        $taskId ??= session('pending_task_id');
+
+        if (! $taskId) {
+            return null;
+        }
+
         return CompletedTask::query()
-            ->where('id', session('pending_task_id'))
+            ->whereKey($taskId)
             ->where('user_id', auth()->id())
             ->where('status', 'pending')
             ->first();
     }
 
-    public function setRating(int $rating): void
+    public function submitTask(?int $taskId = null, ?int $rating = null, ?string $review = null): void
     {
-        $this->rating = ($rating === $this->rating) ? 0 : $rating;
-    }
-
-    public function openTaskModal(): void
-    {
-        $this->rating = 0;
-        $this->review = '';
-        $this->showTaskModal = true;
-    }
-
-    public function closeTaskModal(): void
-    {
-        $this->showTaskModal = false;
-        $this->rating = 0;
-        $this->review = '';
-    }
-
-    public function submitTask(): void
-    {
-        $task = $this->pendingTask();
+        $task = $this->pendingTask($taskId);
 
         if (! $task) {
-            $this->closeTaskModal();
+            $this->dispatch('close-task-modal');
 
             return;
         }
 
         if ($this->blockedByRequiredUpgrade(auth()->user())) {
-            $this->closeTaskModal();
+            $this->dispatch('close-task-modal');
 
             return;
         }
@@ -70,12 +55,17 @@ trait HasTaskModal
             return;
         }
 
-        $this->completeTask(auth()->user(), $task, $this->rating, $this->review);
+        $this->completeTask(
+            auth()->user(),
+            $task,
+            max(0, min(5, $rating ?? $this->rating)),
+            trim($review ?? $this->review),
+        );
 
         session()->forget('task_completed');
 
-        $this->closeTaskModal();
-
+        $this->reset('rating', 'review');
+        $this->dispatch('close-task-modal');
         $this->dispatch('task-completed', message: 'Task completed successfully');
     }
 }

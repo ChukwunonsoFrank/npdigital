@@ -15,6 +15,14 @@ test('authenticated users can visit the dashboard', function () {
     $this->get('/dashboard')->assertStatus(200);
 });
 
+test('dashboard footer links to the support email', function () {
+    $html = view('components.dashboard.footer')->render();
+
+    expect($html)->toContain('mailto:support@npdigital.work')
+        ->and($html)->toContain('support@npdigital.work')
+        ->and($html)->not->toContain('sales@npdigital.com');
+});
+
 test('user dashboard header includes the google translate widget', function () {
     $this->actingAs(User::factory()->create());
 

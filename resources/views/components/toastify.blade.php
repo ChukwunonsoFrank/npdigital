@@ -34,12 +34,6 @@
     (function () {
         var NativeToastify = window.__npNativeToastify || window.Toastify;
 
-        if (!NativeToastify) {
-            return;
-        }
-
-        window.__npNativeToastify = NativeToastify;
-
         var TOAST_CLASS = 'fixed z-[1000] bottom-[calc(68px_+_env(safe-area-inset-bottom)_+_1rem_+_4.5rem)]! left-4 right-4 rounded-2xl bg-[#141414] p-4 shadow-xl md:bottom-24! md:left-auto md:right-6 md:w-96 [&>.toast-close]:hidden';
 
         var ICON = '<span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white">' +
@@ -82,8 +76,6 @@
             }));
         };
 
-        npToastify.defaults = NativeToastify.defaults;
-
         var showToast = function (message) {
             var toast = NativeToastify({
                 text: buildMarkup(message === undefined || message === null ? '' : String(message)),
@@ -100,6 +92,15 @@
         };
 
         var install = function () {
+            if (!NativeToastify || window.__npToastifyInstalled) {
+                return;
+            }
+
+            window.__npToastifyInstalled = true;
+            window.__npNativeToastify = NativeToastify;
+
+            npToastify.defaults = NativeToastify.defaults;
+
             if (window.Toastify !== npToastify) {
                 window.Toastify = npToastify;
             }
@@ -107,14 +108,17 @@
             window.showToast = showToast;
         };
 
-        install();
+        if (NativeToastify) {
+            install();
+        } else {
+            document.addEventListener('load', function (event) {
+                var script = event.target;
 
-        document.addEventListener('load', function (event) {
-            var script = event.target;
-
-            if (script.tagName === 'SCRIPT' && script.src.indexOf('toastify-js') !== -1) {
-                install();
-            }
-        }, true);
+                if (script.tagName === 'SCRIPT' && script.src.indexOf('toastify-js') !== -1 && window.Toastify) {
+                    NativeToastify = window.Toastify;
+                    install();
+                }
+            }, true);
+        }
     })();
 </script>

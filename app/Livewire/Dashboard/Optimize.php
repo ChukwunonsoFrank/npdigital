@@ -13,14 +13,7 @@ class Optimize extends Component
 {
     use CompletesTasks;
 
-    public int $rating = 0;
-
-    public function setRating(int $rating): void
-    {
-        $this->rating = ($rating === $this->rating) ? 0 : $rating;
-    }
-
-    public function submitTask(): void
+    public function submitTask(int $rating = 0): void
     {
         if ($this->blockedByRequiredUpgrade(auth()->user())) {
             return;
@@ -32,7 +25,7 @@ class Optimize extends Component
             ->where('status', 'pending')
             ->firstOrFail();
 
-        $this->completeTask(auth()->user(), $task, $this->rating);
+        $this->completeTask(auth()->user(), $task, max(0, min(5, $rating)));
 
         $this->redirect(route('dashboard.start'));
     }

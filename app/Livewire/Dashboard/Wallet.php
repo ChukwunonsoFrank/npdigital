@@ -26,10 +26,6 @@ class Wallet extends Component
         'TRX' => 'Tron (TRX)',
     ];
 
-    public bool $showWalletModal = false;
-
-    public ?int $editingWalletId = null;
-
     public string $wallet_label = '';
 
     public string $wallet_cryptocurrency = '';
@@ -43,37 +39,9 @@ class Wallet extends Component
         }
     }
 
-    public function openWalletModal(): void
+    public function addWallet(string $label, string $cryptocurrency, string $address): void
     {
-        $this->showWalletModal = true;
-    }
-
-    public function closeWalletModal(): void
-    {
-        $this->showWalletModal = false;
-        $this->editingWalletId = null;
-        $this->reset('wallet_label', 'wallet_cryptocurrency', 'wallet_address');
-        $this->resetValidation();
-    }
-
-    public function openEditWallet(int $walletId): void
-    {
-        $wallet = $this->findWallet($walletId);
-
-        if ($wallet === null) {
-            return;
-        }
-
-        $this->editingWalletId = $wallet->id;
-        $this->wallet_label = $wallet->label;
-        $this->wallet_cryptocurrency = $wallet->cryptocurrency;
-        $this->wallet_address = $wallet->address;
-        $this->resetValidation();
-        $this->showWalletModal = true;
-    }
-
-    public function addWallet(): void
-    {
+        $this->fillWalletForm($label, $cryptocurrency, $address);
         $this->validateWallet();
 
         auth()->user()->wallets()->create([
@@ -82,22 +50,25 @@ class Wallet extends Component
             'address' => $this->wallet_address,
         ]);
 
-        $this->closeWalletModal();
+        $this->resetWalletForm();
+        $this->dispatch('close-wallet-modal');
 
         session()->flash('toast', 'Wallet added successfully');
         $this->redirect(route('dashboard.wallet'), navigate: true);
     }
 
-    public function updateWallet(): void
+    public function updateWallet(int $walletId, string $label, string $cryptocurrency, string $address): void
     {
-        $wallet = $this->findWallet((int) $this->editingWalletId);
+        $wallet = $this->findWallet($walletId);
 
         if ($wallet === null) {
-            $this->closeWalletModal();
+            $this->resetWalletForm();
+            $this->dispatch('close-wallet-modal');
 
             return;
         }
 
+        $this->fillWalletForm($label, $cryptocurrency, $address);
         $this->validateWallet();
 
         $wallet->update([
@@ -106,10 +77,24 @@ class Wallet extends Component
             'address' => $this->wallet_address,
         ]);
 
-        $this->closeWalletModal();
+        $this->resetWalletForm();
+        $this->dispatch('close-wallet-modal');
 
         session()->flash('toast', 'Wallet updated successfully');
         $this->redirect(route('dashboard.wallet'), navigate: true);
+    }
+
+    private function fillWalletForm(string $label, string $cryptocurrency, string $address): void
+    {
+        $this->wallet_label = $label;
+        $this->wallet_cryptocurrency = $cryptocurrency;
+        $this->wallet_address = $address;
+    }
+
+    private function resetWalletForm(): void
+    {
+        $this->reset('wallet_label', 'wallet_cryptocurrency', 'wallet_address');
+        $this->resetValidation();
     }
 
     private function findWallet(int $walletId): ?WalletModel

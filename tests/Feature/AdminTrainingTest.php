@@ -236,8 +236,8 @@ it('credits only opted-in training referrals from earned profit once', function 
         'commission_percentage' => 6.9, 'task_image_path' => 'test.jpg',
         'rating' => '', 'rating_id' => '', 'status' => 'pending',
     ]);
-    Livewire::actingAs($user)->test(Record::class)->call('openSubmission', $task->id)
-        ->call('submitTask')->call('openSubmission', $task->id)->call('submitTask');
+    Livewire::actingAs($user)->test(Record::class)->call('submitTask', $task->id)
+        ->call('submitTask', $task->id);
 
     expect($user->fresh()->balance)->toBe(10000 + $profit)
         ->and($referrer->fresh()->balance)->toBe(700 + $referralProfit)

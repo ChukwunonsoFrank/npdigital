@@ -80,7 +80,7 @@ test('clicking start now creates a pending completed task and opens the modal', 
     Livewire::actingAs($this->user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertNoRedirect();
 
     $completedTask = CompletedTask::where('user_id', $this->user->id)->first();
@@ -96,11 +96,11 @@ test('submitting the task modal approves the task and dispatches a toast', funct
     Livewire::actingAs($this->user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
-        ->call('setRating', 4)
+        ->assertDispatched('open-task-modal')
+        ->set('rating', 4)
         ->set('review', 'Great task')
         ->call('submitTask')
-        ->assertSet('showTaskModal', false)
+        ->assertDispatched('close-task-modal')
         ->assertNoRedirect()
         ->assertDispatched('task-completed', message: 'Task completed successfully');
 
@@ -131,14 +131,14 @@ test('start page does not auto open the task modal on load', function () {
 
     Livewire::actingAs($this->user)
         ->test(Start::class)
-        ->assertSet('showTaskModal', false);
+        ->assertNotDispatched('open-task-modal');
 });
 
 test('start page renders the task modal after starting a task', function () {
     Livewire::actingAs($this->user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertSee('Test Product')
         ->assertSee('Cost:')
         ->assertSee('Profit:')
@@ -306,7 +306,7 @@ test('starting a new task with a pending task redirects to the records page', fu
     Livewire::actingAs($this->user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', false)
+        ->assertNotDispatched('open-task-modal')
         ->assertRedirect(route('dashboard.record'));
 
     expect(CompletedTask::where('user_id', $this->user->id)->count())->toBe(1);
@@ -347,16 +347,7 @@ test('star rating saves to completed task on submit', function () {
     Livewire::actingAs($this->user)
         ->test(Optimize::class)
         ->assertSee('abc12345678901')
-        ->assertSet('rating', 0)
-        ->call('setRating', 4)
-        ->assertSet('rating', 4)
-        ->call('setRating', 2)
-        ->assertSet('rating', 2)
-        ->call('setRating', 2)
-        ->assertSet('rating', 0)
-        ->call('setRating', 5)
-        ->assertSet('rating', 5)
-        ->call('submitTask')
+        ->call('submitTask', 5)
         ->assertRedirect(route('dashboard.start'));
 
     $completedTask->refresh();
@@ -397,7 +388,7 @@ test('real user spends the wallet balance even when a training balance exists', 
         ->test(Start::class)
         ->call('startTask')
         ->assertNotDispatched('insufficient-balance')
-        ->assertSet('showTaskModal', true);
+        ->assertDispatched('open-task-modal');
 });
 
 test('training account spends the training balance instead of the wallet balance', function () {
@@ -416,7 +407,7 @@ test('training account spends the training balance instead of the wallet balance
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', false)
+        ->assertNotDispatched('open-task-modal')
         ->assertDispatched('insufficient-balance', message: 'Insufficient balance to complete task. Top up at least $80.00 to continue.');
 });
 
@@ -437,7 +428,7 @@ test('training account with a funded training balance can start a task', functio
         ->test(Start::class)
         ->call('startTask')
         ->assertNotDispatched('insufficient-balance')
-        ->assertSet('showTaskModal', true);
+        ->assertDispatched('open-task-modal');
 });
 
 test('completing a full task set moves user to next task batch', function () {
@@ -492,7 +483,7 @@ test('user without a first deposit cannot start tasks', function (int $taskBatch
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', false)
+        ->assertNotDispatched('open-task-modal')
         ->assertDispatched('deposit-required', message: 'You need to make your first deposit of $100 before you can start tasks.');
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
@@ -513,7 +504,7 @@ test('user who has made first deposit can continue later batches', function () {
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertNoRedirect();
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeTrue();
@@ -534,7 +525,7 @@ test('user who has completed two task batches can start the third set', function
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertNoRedirect();
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeTrue();
@@ -575,7 +566,7 @@ test('user with a required upgrade cannot start tasks', function () {
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', false)
+        ->assertNotDispatched('open-task-modal')
         ->assertDispatched('upgrade-required', message: 'You must upgrade to Diamond before you can submit tasks.');
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
@@ -609,7 +600,7 @@ test('user with a required upgrade cannot submit a pending task', function () {
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('submitTask')
-        ->assertSet('showTaskModal', false)
+        ->assertDispatched('close-task-modal')
         ->assertDispatched('upgrade-required', message: 'You must upgrade to Diamond before you can submit tasks.');
 
     expect($completedTask->fresh()->status)->toBe('pending')
@@ -676,9 +667,9 @@ test('user who upgraded to the required level can start and submit tasks', funct
     Livewire::actingAs($user)
         ->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->call('submitTask')
-        ->assertSet('showTaskModal', false)
+        ->assertDispatched('close-task-modal')
         ->assertDispatched('task-completed', message: 'Task completed successfully');
 
     $completedTask = CompletedTask::where('user_id', $user->id)->first();

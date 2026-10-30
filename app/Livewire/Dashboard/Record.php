@@ -24,23 +24,6 @@ class Record extends Component
         }
     }
 
-    public function openSubmission(int $taskId): void
-    {
-        $task = CompletedTask::query()
-            ->where('id', $taskId)
-            ->where('user_id', auth()->id())
-            ->where('status', 'pending')
-            ->first();
-
-        if (! $task) {
-            return;
-        }
-
-        session(['pending_task_id' => $task->id]);
-
-        $this->openTaskModal();
-    }
-
     public function render()
     {
         $user = auth()->user();
@@ -63,26 +46,29 @@ class Record extends Component
             ->latest()
             ->paginate(10);
 
-        $pendingTask = $this->pendingTask();
-        $pendingCommissionPercentage = (float) ($pendingTask?->commission_percentage ?? $commissionPercentage);
+        $pendingTaskModals = $pendingTasks->map(function (CompletedTask $task) use ($commissionPercentage, $user): array {
+            $percentage = (float) ($task->commission_percentage ?? $commissionPercentage);
 
-        if ($pendingTask?->commission_amount !== null && (float) $pendingTask->cost > 0) {
-            $pendingCommissionPercentage = round(((int) $pendingTask->commission_amount / 100) / (float) $pendingTask->cost * 100, 2);
-        }
+            if ($task->commission_amount !== null && (float) $task->cost > 0) {
+                $percentage = round(((int) $task->commission_amount / 100) / (float) $task->cost * 100, 2);
+            }
 
-        $commission = $pendingTask ? $pendingTask->profit($commissionPercentage) : 0;
+            return [
+                'task' => $task,
+                'commission' => $task->profit($commissionPercentage),
+                'commission_percentage' => $percentage,
+                'top_up_amount' => $task->is_merge ? (int) $user->negative_balance : 0,
+            ];
+        });
 
         return view('livewire.dashboard.record', [
             'pendingTasks' => $pendingTasks,
+            'pendingTaskModals' => $pendingTaskModals,
             'submittedTasks' => $submittedTasks,
             'totalSubmitted' => $submittedTasks->total(),
             'pendingCount' => $pendingTasks->count(),
             'totalEarned' => ((int) $user->total_commission) / 100,
             'commissionPercentage' => $commissionPercentage,
-            'pendingCommissionPercentage' => $pendingCommissionPercentage,
-            'pendingTask' => $pendingTask,
-            'commission' => $commission,
-            'topUpAmount' => $pendingTask?->is_merge ? (int) $user->negative_balance : 0,
         ]);
     }
 }

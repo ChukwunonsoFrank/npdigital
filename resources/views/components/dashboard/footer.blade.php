@@ -74,7 +74,7 @@
             @foreach ($address as $line)
                 <p>{{ $line }}</p>
             @endforeach
-            <a href="mailto:sales@npdigital.com" class="block hover:text-sidebar-foreground">sales@npdigital.com</a>
+            <a href="mailto:support@npdigital.work" class="block hover:text-sidebar-foreground">support@npdigital.work</a>
         </div>
 
         <div class="mt-10 border-t border-sidebar-border/60">
@@ -92,7 +92,7 @@
                         @foreach ($section['links'] as $link)
                             <li>
                                 <a href="{{ $link['url'] }}"
-                                    @if (!empty($link['external'])) target="_blank" rel="noopener" @endif
+                                    @if (!empty($link['external'])) target="_blank" rel="noopener" @elseif ($link['url'] !== '#') wire:navigate.hover @endif
                                     @class([
                                         'text-sm',
                                         'font-medium text-sidebar-primary hover:underline' => !empty($link['accent']),

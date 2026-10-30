@@ -18,8 +18,6 @@
     <title>{{ $title ?? 'Overview' }} — NP Digital</title>
 
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://rsms.me/">
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -46,16 +44,61 @@
                 <x-dashboard.header :variant="$variant">
                     @if ($variant === 'user')
                         <x-slot:actions>
-                            <a class="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-sm transition-colors hover:bg-muted">
-                                <div class="gtranslate_wrapper"></div>
-                            </a>
+                            <div
+                                x-data="{
+                                    translateLoaded: false,
+                                    translateLoading: false,
+                                    openTranslateOnLoad: false,
+                                    loadTranslate(openAfterLoad = false) {
+                                        this.openTranslateOnLoad = this.openTranslateOnLoad || openAfterLoad;
+
+                                        if (this.translateLoaded || this.translateLoading) {
+                                            return;
+                                        }
+
+                                        this.translateLoading = true;
+
+                                        const script = document.createElement('script');
+                                        script.src = 'https://cdn.gtranslate.net/widgets/latest/popup.js';
+                                        script.defer = true;
+                                        script.dataset.navigateOnce = '';
+                                        script.addEventListener('load', () => {
+                                            this.translateLoaded = true;
+                                            this.translateLoading = false;
+
+                                            if (this.openTranslateOnLoad) {
+                                                this.$nextTick(() => {
+                                                    this.$refs.translate?.querySelector('.gt_switcher-popup')?.click();
+                                                });
+                                            }
+                                        }, { once: true });
+                                        script.addEventListener('error', () => {
+                                            this.translateLoading = false;
+                                            script.remove();
+                                        }, { once: true });
+                                        document.head.appendChild(script);
+                                    },
+                                }"
+                                @mouseenter="loadTranslate()"
+                                @focusin="loadTranslate()"
+                                @touchstart.passive="loadTranslate()"
+                                class="inline-flex h-9 items-center">
+                                <button type="button" x-show="!translateLoaded" @click="loadTranslate(true)"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label="Change language" title="Change language">
+                                    <x-dashboard.icon name="languages" class="h-5 w-5" />
+                                </button>
+
+                                <div x-cloak x-show="translateLoaded" x-ref="translate"
+                                    class="gtranslate_wrapper flex h-9 items-center"></div>
+                            </div>
 
                             <span
                                 class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                                 <x-dashboard.icon name="circle-user-round" class="h-5 w-5 text-primary" />
                             </span>
 
-                            <a href="{{ route('dashboard.notifications') }}" aria-label="Notifications"
+                            <a href="{{ route('dashboard.notifications') }}" wire:navigate aria-label="Notifications"
                                 class="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-muted">
                                 <x-dashboard.icon name="bell" class="h-5 w-5 text-foreground" />
                                 <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive"></span>
@@ -109,7 +152,7 @@
         <x-dashboard.support-bubble />
     @endif
 
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" defer data-navigate-once></script>
 
     <x-toastify />
 
@@ -137,7 +180,7 @@
     @endif
 
     @if ($variant === 'user')
-        <script>
+        <script data-navigate-once>
             window.gtranslateSettings = {
                 "default_language": "en",
                 "detect_browser_language": true,
@@ -146,7 +189,6 @@
                 "flag_style": "3d"
             }
         </script>
-        <script src="https://cdn.gtranslate.net/widgets/latest/popup.js" defer></script>
     @endif
 </body>
 

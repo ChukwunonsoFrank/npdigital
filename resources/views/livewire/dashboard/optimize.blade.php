@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ rating: 0 }">
     <!-- App Capsule -->
     <div id="appCapsule">
         @if ($task)
@@ -15,7 +15,11 @@
 
                         <div class="flex justify-center gap-1 mb-3">
                             @for ($i = 1; $i <= 5; $i++)
-                                <button type="button" wire:click="setRating({{ $i }})" class="border-0 bg-transparent p-0" style="cursor: pointer; font-size: 2rem; color: {{ $i <= $rating ? '#F5A623' : '#D1D5DB' }};">
+                                <button type="button"
+                                    @click="rating = (rating === {{ $i }}) ? 0 : {{ $i }}"
+                                    class="border-0 bg-transparent p-0"
+                                    style="cursor: pointer; font-size: 2rem;"
+                                    x-bind:style="rating >= {{ $i }} ? 'color: #F5A623' : 'color: #D1D5DB'">
                                     ★
                                 </button>
                             @endfor
@@ -50,7 +54,11 @@
                         </div>
 
                         <div class="mt-4">
-                            <button type="button" class="btn btn-primary btn-lg btn-block" wire:click="submitTask">Submit</button>
+                            <button type="button" class="btn btn-primary btn-lg btn-block"
+                                x-on:click="$wire.submitTask(rating)" wire:loading.attr="disabled" wire:target="submitTask">
+                                <span wire:loading.remove wire:target="submitTask">Submit</span>
+                                <span wire:loading wire:target="submitTask">Submitting...</span>
+                            </button>
                         </div>
                     </div>
                 </div>

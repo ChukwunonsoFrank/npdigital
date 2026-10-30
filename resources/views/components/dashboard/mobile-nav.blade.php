@@ -11,9 +11,11 @@
             @php
                 $url = ! empty($item['route']) ? route($item['route']) : '#';
                 $isActive = ! empty($item['active']) && request()->routeIs($item['active']);
+                $isCurrent = request()->url() === $url;
+                $prefetch = ! $isCurrent && ($item['prefetch'] ?? false);
             @endphp
             <li class="flex-1">
-                <a href="{{ $url }}" wire:navigate aria-current="{{ $isActive ? 'page' : 'false' }}"
+                <a href="{{ $url }}" @if ($prefetch) wire:navigate.hover @else wire:navigate @endif aria-current="{{ $isActive ? 'page' : 'false' }}"
                     class="flex flex-col items-center gap-1 py-2 text-[10px] font-semibold">
                     <span @class([
                         'flex h-8 w-12 items-center justify-center rounded-xl transition-colors',

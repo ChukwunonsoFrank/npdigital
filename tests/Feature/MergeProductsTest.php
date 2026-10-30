@@ -214,7 +214,7 @@ it('applies the configured merge negative balance when the merge order starts', 
 
     Livewire::actingAs($user->fresh())->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertSee('Merged order');
 
     expect((int) $user->fresh()->negative_balance)->toBe(7500);
@@ -237,8 +237,7 @@ it('uses the fixed merge commission when the merge order is submitted', function
     expect($merge->profit())->toBe(25.0);
 
     Livewire::actingAs($user)->test(Record::class)
-        ->call('openSubmission', $merge->id)
-        ->call('submitTask')
+        ->call('submitTask', $merge->id)
         ->assertDispatched('task-completed');
 
     expect($merge->fresh()->status)->toBe('approved')
@@ -295,7 +294,7 @@ it('shows the merge shortfall as a bold negative and blocks submission until the
 
     $component = Livewire::actingAs($user)->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertSee('Product optimization order')
         ->assertSee('First Merge Item')
         ->assertSee('Second Merge Item')
@@ -361,7 +360,7 @@ it('shows the merged order notice and submits an affordable merge product', func
 
     Livewire::actingAs($user)->test(Start::class)
         ->call('startTask')
-        ->assertSet('showTaskModal', true)
+        ->assertDispatched('open-task-modal')
         ->assertSee('Product optimization order')
         ->assertSee('Covered Merge')
         ->assertSee('Task 3 / 30')
@@ -392,8 +391,7 @@ it('shows the merge shortfall when opening a pending merge from the records page
     ]);
 
     Livewire::actingAs($user)->test(Record::class)
-        ->call('openSubmission', $merge->id)
-        ->assertSet('showTaskModal', true)
+        ->assertSeeHtml('open-task-modal-'.$merge->id)
         ->assertSee('Product optimization order')
         ->assertSee('Negative balance')
         ->assertSee('-$30.00')
@@ -402,7 +400,7 @@ it('shows the merge shortfall when opening a pending merge from the records page
         ->assertSeeInOrder(['Merged order', 'Submit product'])
         ->assertDontSee('Top Up Wallet')
         ->assertDontSee('Submit Task')
-        ->call('submitTask')
+        ->call('submitTask', $merge->id)
         ->assertDispatched('insufficient-balance', message: 'Top up $30.00 to submit this merge product.');
 
     expect($merge->fresh()->status)->toBe('pending')

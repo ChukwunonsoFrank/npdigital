@@ -1,6 +1,48 @@
-import 'preline'
-
 const LEGACY_HEAD_STYLESHEETS = ['assets/css/style.css']
+
+const PRELINE_SELECTOR = [
+    '[data-hs-overlay]',
+    '[data-hs-tab]',
+    '[data-hs-select]',
+    '[data-hs-dropdown]',
+    '[data-hs-collapse]',
+    '[data-hs-tooltip]',
+    '[data-hs-carousel]',
+    '[data-hs-stepper]',
+    '[data-hs-datepicker]',
+    '[data-hs-file-upload]',
+    '[data-hs-combo-box]',
+    '[data-hs-accordion]',
+    '[data-hs-pin-input]',
+    '[data-hs-copy-markup]',
+    '[data-hs-remove-element]',
+    '[data-hs-scrollspy]',
+    '[data-hs-theme-switch]',
+    '[class*="hs-"]',
+].join(', ')
+
+let prelinePromise
+
+function pageUsesPreline() {
+    return document.querySelector(PRELINE_SELECTOR) !== null
+}
+
+function initPreline() {
+    if (!pageUsesPreline()) {
+        return
+    }
+
+    prelinePromise ??= import('preline')
+
+    prelinePromise
+        .then(() => {
+            window.HSStaticMethods?.autoInit()
+        })
+        .catch((error) => {
+            prelinePromise = undefined
+            console.error('Unable to load Preline UI', error)
+        })
+}
 
 // `wire:navigate` only ever adds or merges <head> assets — it never removes
 // ones the destination page doesn't use. Legacy pages load
@@ -23,14 +65,13 @@ function removeStaleLegacyStylesheets() {
 
 document.addEventListener('livewire:navigated', () => {
     removeStaleLegacyStylesheets()
-
-    // Re-initialize all Preline UI components
-    if (window.HSStaticMethods) {
-        window.HSStaticMethods.autoInit()
-    }
+    initPreline()
 })
 
-document.addEventListener('DOMContentLoaded', removeStaleLegacyStylesheets)
+document.addEventListener('DOMContentLoaded', () => {
+    removeStaleLegacyStylesheets()
+    initPreline()
+})
 window.addEventListener('pageshow', removeStaleLegacyStylesheets)
 
 removeStaleLegacyStylesheets()

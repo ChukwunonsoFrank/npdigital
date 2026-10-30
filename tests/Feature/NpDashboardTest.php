@@ -51,8 +51,22 @@ it('loads the toast scripts once so soft navigation keeps the current toast styl
     ]))
         ->get(route('dashboard.start'))
         ->assertOk()
-        ->assertSee('src="https://cdn.jsdelivr.net/npm/toastify-js" data-navigate-once', false)
+        ->assertSee('src="https://cdn.jsdelivr.net/npm/toastify-js" defer data-navigate-once', false)
         ->assertSee('<script data-navigate-once>', false);
+});
+
+it('loads third-party dashboard assets only when they are needed', function () {
+    $this->actingAs(User::factory()->create([
+        'is_admin' => false,
+        'is_banned' => false,
+    ]))
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('rsms.me')
+        ->assertDontSee('src="https://cdn.gtranslate.net', false)
+        ->assertSee('aria-label="Change language"', false)
+        ->assertSee('aria-label="Load Google Map"', false)
+        ->assertSee('Google Maps loads only when you open it');
 });
 
 it('renders the redesigned start page content', function () {
@@ -360,6 +374,30 @@ it('renders the shared dashboard shell with the user navigation', function () {
         ->toContain('Ubersuggest')
         ->toContain('Premier Partner')
         ->toContain('All rights reserved');
+});
+
+it('prefetches read-only dashboard links before they are clicked', function () {
+    $response = $this->actingAs(User::factory()->create(['is_admin' => false, 'is_banned' => false]))
+        ->get(route('dashboard.activities'));
+
+    $response->assertOk();
+
+    expect($response->getContent())
+        ->toMatch('/href="'.preg_quote(route('dashboard'), '/').'"\s+wire:navigate\.hover/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.bonus-center'), '/').'"\s+wire:navigate\.hover/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.start'), '/').'"\s+wire:navigate(?!\.hover)/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.record'), '/').'"\s+wire:navigate(?!\.hover)/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.wallet'), '/').'"\s+wire:navigate(?!\.hover)/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.notifications'), '/').'"\s+wire:navigate(?!\.hover)/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.about-us'), '/').'"\s+wire:navigate\.hover/')
+        ->toMatch('/href="'.preg_quote(route('dashboard.contact'), '/').'"\s+wire:navigate\.hover/');
+});
+
+it('places the bonus center link directly before notifications in the user sidebar', function () {
+    $labels = array_column(Navigation::user(), 'label');
+
+    expect(array_search('Notifications', $labels, true))
+        ->toBe(array_search('Bonus Center', $labels, true) + 1);
 });
 
 it('links the header bell icon to the notifications page', function () {

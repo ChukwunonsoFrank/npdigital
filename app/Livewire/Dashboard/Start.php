@@ -194,7 +194,8 @@ class Start extends Component
 
         session(['pending_task_id' => $completedTask->id]);
 
-        $this->openTaskModal();
+        $this->reset('rating', 'review');
+        $this->dispatch('open-task-modal');
     }
 
     public function render()

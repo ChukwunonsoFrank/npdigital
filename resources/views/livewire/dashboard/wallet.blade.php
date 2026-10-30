@@ -1,4 +1,11 @@
-<div x-data>
+<div x-data="{
+    open: false,
+    errorsVisible: false,
+    editingId: null,
+    label: '',
+    crypto: '',
+    address: '',
+}" x-on:close-wallet-modal.window="open = false">
     <div class="animate-fade-in space-y-4">
         <div>
             <h1 class="font-display text-xl font-bold text-foreground">Wallet</h1>
@@ -82,7 +89,8 @@
         <div class="rounded-xl border-2 border-border p-4">
             <div class="mb-3 flex items-center justify-between">
                 <h2 class="font-display text-sm font-bold text-foreground">Saved Wallets</h2>
-                <button type="button" wire:click="openWalletModal"
+                <button type="button"
+                    @click="open = true; errorsVisible = false; editingId = null; label = ''; crypto = ''; address = ''"
                     class="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border-2 border-border bg-background px-3 text-xs font-bold text-foreground transition-colors hover:bg-muted">
                     <x-dashboard.icon name="plus" class="h-3.5 w-3.5" />
                     Add Wallet
@@ -107,7 +115,13 @@
                             </div>
                             <span
                                 class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">{{ $wallet->cryptocurrency }}</span>
-                            <button type="button" wire:click="openEditWallet({{ $wallet->id }})" aria-label="Edit {{ $wallet->label }}"
+                            <button type="button"
+                                data-wallet-id="{{ $wallet->id }}"
+                                data-wallet-label="{{ $wallet->label }}"
+                                data-wallet-crypto="{{ $wallet->cryptocurrency }}"
+                                data-wallet-address="{{ $wallet->address }}"
+                                @click="open = true; errorsVisible = false; editingId = $el.dataset.walletId; label = $el.dataset.walletLabel; crypto = $el.dataset.walletCrypto; address = $el.dataset.walletAddress"
+                                aria-label="Edit {{ $wallet->label }}"
                                 class="shrink-0 text-primary transition-colors hover:text-primary/80">
                                 <x-dashboard.icon name="pencil" class="h-3.5 w-3.5" />
                             </button>
@@ -153,35 +167,37 @@
         </div>
     </div>
 
-    <div x-cloak x-show="$wire.showWalletModal" x-transition.opacity.duration.200ms
-        class="fixed inset-0 z-50 bg-black/50" @click="$wire.closeWalletModal()"></div>
+    <div x-cloak x-show="open" x-transition.opacity.duration.200ms
+        class="fixed inset-0 z-50 bg-black/50" @click="open = false"></div>
 
-    <div x-cloak x-show="$wire.showWalletModal" role="dialog" aria-modal="true" aria-label="{{ $editingWalletId ? 'Edit Wallet' : 'Add New Wallet' }}"
+    <div x-cloak x-show="open" role="dialog" aria-modal="true" aria-label="Wallet"
         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 scale-95"
         x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition duration-200 ease-in"
         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="fixed left-1/2 top-1/2 z-50 w-[calc(100%_-_2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-card p-6 shadow-xl">
-        <button type="button" wire:click="closeWalletModal" aria-label="Close"
+        <button type="button" @click="open = false" aria-label="Close"
             class="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground">
             <x-dashboard.icon name="x" class="h-4 w-4" />
         </button>
 
-        <h2 class="pr-6 text-center font-display text-lg font-semibold text-foreground sm:text-left">{{ $editingWalletId ? 'Edit Wallet' : 'Add New Wallet' }}</h2>
+        <h2 class="pr-6 text-center font-display text-lg font-semibold text-foreground sm:text-left">
+            <span x-text="editingId ? 'Edit Wallet' : 'Add New Wallet'">Add New Wallet</span>
+        </h2>
 
         <div class="mt-4 space-y-4">
             <div class="space-y-2">
                 <label class="text-sm font-medium text-foreground" for="wallet_label">Wallet Label</label>
-                <input id="wallet_label" type="text" wire:model="wallet_label" placeholder="e.g. My BTC Wallet"
+                <input id="wallet_label" type="text" x-model="label" placeholder="e.g. My BTC Wallet"
                     class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
                 @error('wallet_label')
-                    <p class="text-xs text-destructive">{{ $message }}</p>
+                    <p x-show="errorsVisible" class="text-xs text-destructive">{{ $message }}</p>
                 @enderror
             </div>
 
             <div class="space-y-2">
                 <label class="text-sm font-medium text-foreground" for="wallet_cryptocurrency">Cryptocurrency</label>
                 <div class="relative">
-                    <select id="wallet_cryptocurrency" wire:model="wallet_cryptocurrency"
+                    <select id="wallet_cryptocurrency" x-model="crypto"
                         class="h-10 w-full appearance-none rounded-md border border-input bg-background px-3 pr-9 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
                         <option value="">Select crypto</option>
                         @foreach ($cryptocurrencies as $code => $label)
@@ -192,23 +208,26 @@
                         class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
                 @error('wallet_cryptocurrency')
-                    <p class="text-xs text-destructive">{{ $message }}</p>
+                    <p x-show="errorsVisible" class="text-xs text-destructive">{{ $message }}</p>
                 @enderror
             </div>
 
             <div class="space-y-2">
                 <label class="text-sm font-medium text-foreground" for="wallet_address">Wallet Address</label>
-                <input id="wallet_address" type="text" wire:model="wallet_address"
+                <input id="wallet_address" type="text" x-model="address"
                     placeholder="Enter wallet address"
                     class="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30">
                 @error('wallet_address')
-                    <p class="text-xs text-destructive">{{ $message }}</p>
+                    <p x-show="errorsVisible" class="text-xs text-destructive">{{ $message }}</p>
                 @enderror
             </div>
 
-            <button type="button" wire:click="{{ $editingWalletId ? 'updateWallet' : 'addWallet' }}"
-                class="h-10 w-full rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                Save Wallet
+            <button type="button"
+                x-on:click="errorsVisible = true; editingId ? $wire.updateWallet(editingId, label, crypto, address) : $wire.addWallet(label, crypto, address)"
+                wire:loading.attr="disabled" wire:target="addWallet,updateWallet"
+                class="h-10 w-full rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60">
+                <span wire:loading.remove wire:target="addWallet,updateWallet">Save Wallet</span>
+                <span wire:loading wire:target="addWallet,updateWallet">Saving...</span>
             </button>
         </div>
     </div>

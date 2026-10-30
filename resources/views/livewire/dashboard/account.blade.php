@@ -73,6 +73,8 @@
         ['label' => 'Withdraw', 'icon' => 'arrow-up-from-line', 'url' => route('dashboard.withdraw'), 'color' => 'text-orange-500'],
         ['label' => 'Activities', 'icon' => 'activity', 'url' => route('dashboard.activities'), 'color' => 'text-violet-500'],
         ['label' => 'Certification', 'icon' => 'award', 'url' => route('dashboard.certificate'), 'color' => 'text-cyan-500'],
+        ['label' => 'Bonus Center', 'icon' => 'gift', 'url' => route('dashboard.bonus-center'), 'color' => 'text-amber-500'],
+        ['label' => 'VIP Levels', 'icon' => 'crown', 'url' => route('dashboard.vip-levels'), 'color' => 'text-yellow-500'],
         ['label' => 'FAQ', 'icon' => 'circle-help', 'url' => route('dashboard.faqs'), 'color' => 'text-amber-500'],
         ['label' => 'About Us', 'icon' => 'file-text', 'url' => route('dashboard.about-us'), 'color' => 'text-blue-500'],
     ];

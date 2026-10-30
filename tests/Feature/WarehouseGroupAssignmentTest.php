@@ -35,7 +35,7 @@ it('delivers only unsubmitted products in the assigned level and group and disab
 
     foreach ([$first, $second] as $product) {
         $component = Livewire::actingAs($user->fresh())->test(Start::class)
-            ->call('startTask')->assertSee($product->name)->assertSet('showTaskModal', true);
+            ->call('startTask')->assertSee($product->name)->assertDispatched('open-task-modal');
         $pending = $user->tasks()->where('status', 'pending')->sole();
         expect($pending->warehouse_product_id)->toBe($product->product_id)
             ->and((float) $pending->cost)->toBe($product->price);
@@ -55,7 +55,7 @@ it('delivers only unsubmitted products in the assigned level and group and disab
     }
 
     Livewire::actingAs($user->fresh())->test(Start::class)->call('startTask')
-        ->assertSet('showTaskModal', false)->assertDispatched('task-limit-reached');
+        ->assertNotDispatched('open-task-modal')->assertDispatched('task-limit-reached');
     expect($user->tasks()->count())->toBe(2)
         ->and($user->fresh()->submitted_warehouse_products)->toBe([$first->product_id, $second->product_id]);
 
@@ -133,7 +133,7 @@ it('keeps assignments separate by level and does not consume unaffordable produc
     Livewire::actingAs($user->fresh())->test(Start::class)->call('startTask')->assertDispatched('insufficient-balance');
     expect($user->tasks()->count())->toBe(0);
     $user->update(['balance' => 3120]);
-    Livewire::actingAs($user->fresh())->test(Start::class)->call('startTask')->assertSet('showTaskModal', true);
+    Livewire::actingAs($user->fresh())->test(Start::class)->call('startTask')->assertDispatched('open-task-modal');
     expect($user->tasks()->sole()->warehouse_product_id)->toBe($product->product_id);
 });
 

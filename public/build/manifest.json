@@ -1,13 +1,30 @@
 {
+  "node_modules/preline/src/index.ts": {
+    "file": "assets/index-DBPDyuFr.js",
+    "name": "index",
+    "src": "node_modules/preline/src/index.ts",
+    "isDynamicEntry": true
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CjfVNml3.css",
+    "file": "assets/app-CntctRaE.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
+  "resources/css/fonts/InterVariable-Italic.woff2": {
+    "file": "assets/InterVariable-Italic-FCBEiFp6.woff2",
+    "src": "resources/css/fonts/InterVariable-Italic.woff2"
+  },
+  "resources/css/fonts/InterVariable.woff2": {
+    "file": "assets/InterVariable-DiVDrmQJ.woff2",
+    "src": "resources/css/fonts/InterVariable.woff2"
+  },
   "resources/js/app.js": {
-    "file": "assets/app-DCScYs2S.js",
+    "file": "assets/app-DTGyrA_m.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/preline/src/index.ts"
+    ]
   }
 }

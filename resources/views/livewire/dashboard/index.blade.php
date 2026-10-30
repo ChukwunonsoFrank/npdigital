@@ -78,9 +78,22 @@
         <div class="overflow-hidden rounded-xl shadow-sm"
             style="background: linear-gradient(120deg, #1f9fd8 0%, #2bc4c9 100%);">
             <div class="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-10 sm:p-10">
-                <div class="w-full overflow-hidden rounded-lg border border-white/20 shadow-lg sm:w-1/2 sm:max-w-md">
-                    <iframe src="{{ $findUs['embedUrl'] }}" title="NP Digital office location" loading="lazy"
-                        referrerpolicy="no-referrer-when-downgrade" class="h-56 w-full sm:h-64"></iframe>
+                <div x-data="{ mapLoaded: false }"
+                    class="w-full overflow-hidden rounded-lg border border-white/20 shadow-lg sm:w-1/2 sm:max-w-md">
+                    <button type="button" x-show="!mapLoaded" @click="mapLoaded = true"
+                        class="group flex h-56 w-full flex-col items-center justify-center gap-3 bg-white/10 px-6 text-center text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-64"
+                        aria-label="Load Google Map">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
+                            <x-dashboard.icon name="map-pin" class="h-6 w-6" />
+                        </span>
+                        <span class="text-sm font-semibold">Load map</span>
+                        <span class="text-xs text-white/70">Google Maps loads only when you open it</span>
+                    </button>
+
+                    <template x-if="mapLoaded">
+                        <iframe src="{{ $findUs['embedUrl'] }}" title="NP Digital office location" loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade" class="h-56 w-full sm:h-64"></iframe>
+                    </template>
                 </div>
                 <div class="text-white sm:flex-1">
                     <h3 class="font-display text-2xl font-bold sm:text-3xl">{{ $findUs['title'] }}</h3>

@@ -78,8 +78,7 @@ test('admin is notified when user completes their 10th task from the record page
 
     Livewire::actingAs($user)
         ->test(Record::class)
-        ->call('openSubmission', $completedTask->id)
-        ->call('submitTask');
+        ->call('submitTask', $completedTask->id);
 
     Notification::assertSentOnDemand(
         TaskThresholdReached::class,

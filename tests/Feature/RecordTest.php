@@ -156,7 +156,7 @@ test('record page shows pending tasks as tappable to submit', function () {
         ->test(Record::class)
         ->assertSee('Pending Task')
         ->assertSee('Tap to submit this product')
-        ->assertSeeHtml('wire:click="openSubmission');
+        ->assertSeeHtml('open-task-modal-');
 });
 
 test('record page opens the task modal for an existing pending submission', function () {
@@ -172,9 +172,9 @@ test('record page opens the task modal for an existing pending submission', func
 
     Livewire::actingAs($this->user)
         ->test(Record::class)
-        ->call('openSubmission', $pendingTask->id)
-        ->assertSet('showTaskModal', true)
         ->assertSee('Pending Task')
+        ->assertSeeHtml('open-task-modal-'.$pendingTask->id)
+        ->assertSee('Rating (optional):')
         ->assertDontSee('Pending Product');
 });
 
@@ -192,7 +192,7 @@ test('record page does not show the pending call to action for approved tasks', 
     Livewire::actingAs($this->user)
         ->test(Record::class)
         ->assertSee('Approved Task')
-        ->assertDontSeeHtml('wire:click="openSubmission')
+        ->assertDontSeeHtml('open-task-modal-')
         ->assertDontSee('Tap to submit this product');
 });
 
@@ -209,12 +209,8 @@ test('submitting the task modal from the records page approves it', function () 
 
     Livewire::actingAs($this->user)
         ->test(Record::class)
-        ->call('openSubmission', $completedTask->id)
-        ->assertSet('showTaskModal', true)
-        ->set('rating', 5)
-        ->set('review', 'Great product')
-        ->call('submitTask')
-        ->assertSet('showTaskModal', false)
+        ->call('submitTask', $completedTask->id, 5, 'Great product')
+        ->assertDispatched('close-task-modal')
         ->assertNoRedirect()
         ->assertDispatched('task-completed', message: 'Task completed successfully');
 
