@@ -278,6 +278,26 @@ class ProductWarehouse
     }
 
     /**
+     * Find a single product in the level warehouse, or across every level when none is given.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findProduct(?string $level, string $productId): ?array
+    {
+        $levels = $level !== null ? [$level] : array_column(self::levels(), 'value');
+
+        foreach ($levels as $candidate) {
+            foreach (self::levelProducts($candidate) as $product) {
+                if ((string) $product['id'] === $productId) {
+                    return $product;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the legacy generated products used to retain the existing pricing pattern during import.
      *
      * @return list<array{id: string, name: string, image: string|null, brand: string, price: int, commission: float, description: string, assigned: int, total: int}>

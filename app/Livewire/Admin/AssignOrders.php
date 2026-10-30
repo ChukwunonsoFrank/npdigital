@@ -28,8 +28,12 @@ class AssignOrders extends Component
 
     public int $totalOrders = ProductWarehouse::PRODUCTS_PER_SET;
 
-    /** @var list<array{key: string, position: int, commission: string, negative_balance: string, items: list<array<string, mixed>>}> */
+    /** @var list<array{key: string, position: int, items: list<array<string, mixed>>}> */
     public array $mergeOrders = [];
+
+    public ?int $productPickerIndex = null;
+
+    public string $productSearch = '';
 
     public bool $clearExisting = true;
 
@@ -77,25 +81,75 @@ class AssignOrders extends Component
             return;
         }
 
-        $items = $this->randomMergeItems($user);
+        $this->mergeOrders[] = [
+            'key' => substr(bin2hex(random_bytes(7)), 0, 14),
+            'position' => $this->nextMergePosition(),
+            'items' => [],
+        ];
 
-        if ($items === []) {
-            $this->addError('mergeOrders', 'No products are available to build a merge order for this level.');
+        $this->productPickerIndex = array_key_last($this->mergeOrders);
+        $this->productSearch = '';
+        $this->resetValidation();
+    }
+
+    public function toggleProductPicker(int $index): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        if (! isset($this->mergeOrders[$index])) {
+            return;
+        }
+
+        $this->productPickerIndex = $this->productPickerIndex === $index ? null : $index;
+        $this->productSearch = '';
+        $this->resetValidation();
+    }
+
+    public function addMergeProduct(int $index, string $productId): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = $this->selectedUser();
+
+        if (! $user || ! isset($this->mergeOrders[$index])) {
+            return;
+        }
+
+        if ($this->isMergeProductUsed($productId)) {
+            $this->addError('productSearch', 'That product is already in a merge bundle.');
 
             return;
         }
 
-        $costCents = (int) round(array_sum(array_column($items, 'price')) * 100);
+        if (in_array($productId, $user->submitted_warehouse_products ?? [], true)) {
+            $this->addError('productSearch', 'That product has already been submitted by this user.');
 
-        $this->mergeOrders[] = [
-            'key' => substr(bin2hex(random_bytes(7)), 0, 14),
-            'position' => $this->nextMergePosition(),
-            'commission' => number_format($costCents * self::MERGE_PERCENTAGE / 10000, 2, '.', ''),
-            'negative_balance' => number_format(max(0, $costCents - (int) $user->balance) / 100, 2, '.', ''),
-            'items' => $items,
-        ];
+            return;
+        }
 
-        $this->resetValidation('mergeOrders');
+        $product = ProductWarehouse::findProduct(null, $productId);
+
+        if ($product === null) {
+            $this->addError('productSearch', 'That product is no longer available in the warehouse.');
+
+            return;
+        }
+
+        $this->mergeOrders[$index]['items'][] = $this->mergeItem($product);
+        $this->productPickerIndex = $index;
+        $this->resetValidation();
+        $this->resetErrorBag('productSearch');
+    }
+
+    public function removeMergeProduct(int $index, int $itemIndex): void
+    {
+        if (! isset($this->mergeOrders[$index]['items'][$itemIndex])) {
+            return;
+        }
+
+        unset($this->mergeOrders[$index]['items'][$itemIndex]);
+        $this->mergeOrders[$index]['items'] = array_values($this->mergeOrders[$index]['items']);
+        $this->resetValidation();
     }
 
     public function removeMergeOrder(int $index): void
@@ -106,6 +160,14 @@ class AssignOrders extends Component
 
         unset($this->mergeOrders[$index]);
         $this->mergeOrders = array_values($this->mergeOrders);
+
+        if ($this->productPickerIndex === $index) {
+            $this->productPickerIndex = null;
+            $this->productSearch = '';
+        } elseif ($this->productPickerIndex !== null && $this->productPickerIndex > $index) {
+            $this->productPickerIndex--;
+        }
+
         $this->resetValidation();
     }
 
@@ -125,14 +187,13 @@ class AssignOrders extends Component
             'totalOrders' => ['required', 'integer', 'min:1', 'max:'.self::MAX_ORDERS],
             'mergeOrders' => ['array'],
             'mergeOrders.*.position' => ['required', 'integer', 'min:1', 'max:'.$this->totalOrders, 'distinct'],
-            'mergeOrders.*.commission' => ['required', 'numeric', 'min:0', 'max:49999999.99', 'decimal:0,2'],
-            'mergeOrders.*.negative_balance' => ['required', 'numeric', 'min:0', 'max:49999999.99', 'decimal:0,2'],
             'mergeOrders.*.items' => ['required', 'array', 'min:1'],
+            'mergeOrders.*.items.*.id' => ['required', 'string'],
         ], [
             'mergeOrders.*.position.distinct' => 'Each merge order needs a unique order number.',
             'mergeOrders.*.position.max' => 'Merge order numbers must fit inside the total orders.',
-            'mergeOrders.*.commission.required' => 'Enter the merge commission.',
-            'mergeOrders.*.negative_balance.required' => 'Enter the merge negative balance.',
+            'mergeOrders.*.items.required' => 'Add at least one product to every merge bundle.',
+            'mergeOrders.*.items.min' => 'Add at least one product to every merge bundle.',
         ]);
 
         $existingOrders = CompletedTask::query()
@@ -290,6 +351,7 @@ class AssignOrders extends Component
             'normalCommission' => (float) ($membershipLevel?->percentage ?? 0),
             'mergePercentage' => self::MERGE_PERCENTAGE,
             'maxOrders' => self::MAX_ORDERS,
+            'productResults' => $this->productResults(),
         ]);
     }
 
@@ -320,6 +382,8 @@ class AssignOrders extends Component
     {
         $this->totalOrders = ProductWarehouse::PRODUCTS_PER_SET;
         $this->mergeOrders = [];
+        $this->productPickerIndex = null;
+        $this->productSearch = '';
         $this->clearExisting = true;
         $this->resetValidation();
     }
@@ -345,60 +409,87 @@ class AssignOrders extends Component
     }
 
     /**
+     * Products the currently open bundle picker can offer.
+     *
      * @return list<array<string, mixed>>
      */
-    private function randomMergeItems(User $user): array
+    private function productResults(): array
     {
-        $used = collect($this->mergeOrders)
-            ->flatMap(fn (array $row): array => array_column($row['items'], 'id'))
-            ->all();
-        $submitted = $user->submitted_warehouse_products ?? [];
-        $pool = array_values(array_filter(
-            ProductWarehouse::levelProducts(strtolower($user->membership_level)),
-            fn (array $product): bool => ! in_array($product['id'], $used, true)
-                && ! in_array($product['id'], $submitted, true),
-        ));
+        $user = $this->selectedUser();
 
-        if ($pool === []) {
+        if (
+            ! $user
+            || $this->productPickerIndex === null
+            || ! isset($this->mergeOrders[$this->productPickerIndex])
+        ) {
             return [];
         }
 
-        shuffle($pool);
+        $submitted = $user->submitted_warehouse_products ?? [];
 
-        return array_map(fn (array $product): array => [
-            'id' => $product['id'],
-            'name' => (string) $product['name'],
-            'image' => $product['image'],
-            'image_url' => $product['image_url'],
-            'brand' => $product['brand'],
-            'level' => $product['level'],
-            'day' => $product['day'],
-            'group' => $product['group'],
-            'price' => (float) $product['price'],
-        ], array_slice($pool, 0, min(3, count($pool))));
+        return array_values(array_filter(
+            ProductWarehouse::searchProducts(null, $this->productSearch, 60),
+            fn (array $product): bool => ! $this->isMergeProductUsed((string) $product['id'])
+                && ! in_array($product['id'], $submitted, true),
+        ));
+    }
+
+    private function isMergeProductUsed(string $productId): bool
+    {
+        foreach ($this->mergeOrders as $mergeOrder) {
+            if (in_array($productId, array_column($mergeOrder['items'], 'id'), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * @param  array{key: string, position: int|string, commission: string, negative_balance: string, items: list<array<string, mixed>>}  $mergeOrder
+     * @param  array<string, mixed>  $product
+     * @return array<string, mixed>
+     */
+    private function mergeItem(array $product): array
+    {
+        return [
+            'id' => (string) $product['id'],
+            'name' => (string) $product['name'],
+            'image' => $product['image'] ?? null,
+            'image_url' => $product['image_url'] ?? null,
+            'brand' => $product['brand'] ?? null,
+            'level' => $product['level'] ?? null,
+            'day' => $product['day'] ?? null,
+            'group' => $product['group'] ?? null,
+            'price' => (float) $product['price'],
+        ];
+    }
+
+    /**
+     * @param  array{key: string, position: int|string, items: list<array<string, mixed>>}  $mergeOrder
      */
     private function createMergeTask(User $user, array $mergeOrder, int $position, int $availableAfter): void
     {
-        $items = array_map(fn (array $item): array => [
-            'id' => $item['id'],
-            'name' => $item['name'],
-            'image' => $item['image'] ?? null,
-            'brand' => $item['brand'] ?? null,
-            'level' => $item['level'] ?? null,
-            'day' => $item['day'] ?? null,
-            'group' => $item['group'] ?? null,
-            'price' => (float) $item['price'],
-        ], $mergeOrder['items']);
+        $items = [];
+
+        foreach ($mergeOrder['items'] as $item) {
+            $product = ProductWarehouse::findProduct(null, (string) $item['id']);
+
+            if ($product === null) {
+                throw ValidationException::withMessages([
+                    'mergeOrders' => 'A selected bundle product is no longer available. Remove it and choose another.',
+                ]);
+            }
+
+            $items[] = $this->mergeItem($product);
+        }
 
         $names = array_column($items, 'name');
         $title = count($names) > 2
             ? $names[0].' + '.$names[1].' + '.(count($names) - 2).' more'
             : implode(' + ', $names);
         $totalCents = (int) round(array_sum(array_column($items, 'price')) * 100);
+        $commissionCents = (int) round($totalCents * self::MERGE_PERCENTAGE / 100);
+        $negativeCents = max(0, $totalCents - (int) $user->balance);
 
         $user->tasks()->create([
             'title' => $title !== '' ? $title : 'Merged order',
@@ -406,7 +497,7 @@ class AssignOrders extends Component
             'task_image_path' => (string) ($items[0]['image'] ?? ''),
             'brand' => $items[0]['brand'] ?? null,
             'commission_percentage' => self::MERGE_PERCENTAGE,
-            'commission_amount' => (int) round(((float) $mergeOrder['commission']) * 100),
+            'commission_amount' => $commissionCents,
             'available_after_tasks' => $availableAfter,
             'rating' => '0',
             'rating_id' => substr(bin2hex(random_bytes(7)), 0, 14),
@@ -414,7 +505,7 @@ class AssignOrders extends Component
             'is_merge' => true,
             'merge_items' => $items,
             'merge_position' => $position,
-            'merge_negative_balance' => (int) round(((float) $mergeOrder['negative_balance']) * 100),
+            'merge_negative_balance' => $negativeCents,
         ]);
     }
 

@@ -128,8 +128,8 @@
                 <div>
                     <h2 class="font-display text-xl font-bold">Assign task orders</h2>
                     <p class="mt-1 max-w-3xl text-sm text-muted-foreground">
-                        Products and amounts are generated from the {{ ucfirst($selectedUser->membership_level ?: 'Normal') }} warehouse.
-                        Normal orders earn the member level commission. Merge orders replace one normal order at their chosen position and use the merge multiplier unless you set a commission.
+                        Normal orders and amounts come from the {{ ucfirst($selectedUser->membership_level ?: 'Normal') }} warehouse.
+                        Merge orders replace one normal order at their chosen position; pick their products and the merge commission and negative balance are calculated automatically.
                     </p>
                 </div>
             </div>
@@ -142,7 +142,7 @@
             @else
                 <div class="mt-4 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
                     <x-dashboard.icon name="sparkles" class="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <p>Products are picked at random from the user's level. Merge orders are auto-built from the same product pool and can be added anywhere in the set.</p>
+                    <p>Normal orders are picked from the user's level. Choose the products in each merge bundle; the commission and negative balance are calculated automatically.</p>
                 </div>
             @endif
 
@@ -182,7 +182,7 @@
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h3 class="text-sm font-bold text-foreground">Merge orders</h3>
-                        <p class="text-xs text-muted-foreground">Choose the order number each merge lands on. Multiple merges are allowed.</p>
+                        <p class="text-xs text-muted-foreground">Choose the order number each merge lands on, then pick the products in its bundle. Multiple merges are allowed.</p>
                     </div>
                     <button type="button" wire:click="addMergeOrder"
                         class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -195,7 +195,10 @@
                 <div class="mt-3 space-y-3">
                     @forelse ($mergeOrders as $index => $mergeOrder)
                         @php
-                            $mergeCost = array_sum(array_map(fn (array $item): float => (float) $item['price'], $mergeOrder['items']));
+                            $mergeCostCents = (int) round(array_sum(array_map(fn (array $item): float => (float) $item['price'], $mergeOrder['items'])) * 100);
+                            $mergeCommissionCents = (int) round($mergeCostCents * $mergePercentage / 100);
+                            $mergeNegativeCents = max(0, $mergeCostCents - (int) $selectedUser->balance);
+                            $isPickerOpen = $productPickerIndex === $index;
                         @endphp
                         <div wire:key="merge-order-{{ $mergeOrder['key'] }}" class="rounded-xl border border-border bg-muted/20 p-4">
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)_auto]">
@@ -207,17 +210,23 @@
                                 </div>
 
                                 <div class="space-y-1">
-                                    <label for="merge-commission-{{ $mergeOrder['key'] }}" class="text-xs font-medium text-foreground">Commission ($)</label>
-                                    <input wire:model="mergeOrders.{{ $index }}.commission" id="merge-commission-{{ $mergeOrder['key'] }}" type="number" min="0" step="0.01"
-                                        class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @error('mergeOrders.'.$index.'.commission') border-destructive @enderror" />
-                                    @error('mergeOrders.'.$index.'.commission') <p class="text-[10px] text-destructive" role="alert">{{ $message }}</p> @enderror
+                                    <span class="text-xs font-medium text-foreground">Commission ({{ $mergeCommissionLabel }}%)</span>
+                                    <div class="flex h-10 items-center justify-between rounded-md border border-border bg-muted/40 px-3">
+                                        <span class="text-sm font-semibold text-foreground">${{ number_format($mergeCommissionCents / 100, 2) }}</span>
+                                        <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Auto</span>
+                                    </div>
                                 </div>
 
                                 <div class="space-y-1">
-                                    <label for="merge-negative-{{ $mergeOrder['key'] }}" class="text-xs font-medium text-foreground">Negative balance ($)</label>
-                                    <input wire:model="mergeOrders.{{ $index }}.negative_balance" id="merge-negative-{{ $mergeOrder['key'] }}" type="number" min="0" step="0.01"
-                                        class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @error('mergeOrders.'.$index.'.negative_balance') border-destructive @enderror" />
-                                    @error('mergeOrders.'.$index.'.negative_balance') <p class="text-[10px] text-destructive" role="alert">{{ $message }}</p> @enderror
+                                    <span class="text-xs font-medium text-foreground">Negative balance</span>
+                                    <div class="flex h-10 items-center justify-between rounded-md border border-border bg-muted/40 px-3">
+                                        <span @class([
+                                            'text-sm font-semibold',
+                                            'text-destructive' => $mergeNegativeCents > 0,
+                                            'text-foreground' => $mergeNegativeCents === 0,
+                                        ])>{{ $mergeNegativeCents > 0 ? '-$'.number_format($mergeNegativeCents / 100, 2) : '$0.00' }}</span>
+                                        <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Auto</span>
+                                    </div>
                                 </div>
 
                                 <div class="flex items-end">
@@ -228,15 +237,70 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-3">
-                                <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bundle</span>
-                                @foreach ($mergeOrder['items'] as $item)
-                                    <span class="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground">
-                                        <span class="truncate">{{ $item['name'] }}</span>
-                                        <span class="shrink-0 font-bold">${{ number_format((float) $item['price'], 2) }}</span>
-                                    </span>
-                                @endforeach
-                                <span class="ml-auto text-xs font-bold text-foreground">Combined ${{ number_format($mergeCost, 2) }}</span>
+                            @error('mergeOrders.'.$index.'.items') <p class="mt-2 text-[10px] text-destructive" role="alert">{{ $message }}</p> @enderror
+
+                            <div class="mt-3 border-t border-border/60 pt-3">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Bundle</span>
+                                    @forelse ($mergeOrder['items'] as $itemIndex => $item)
+                                        <span wire:key="merge-item-{{ $mergeOrder['key'] }}-{{ $item['id'] }}" class="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary py-1 pr-1 pl-2 text-[10px] font-semibold text-secondary-foreground">
+                                            <span class="truncate">{{ $item['name'] }}</span>
+                                            <span class="shrink-0 font-bold">${{ number_format((float) $item['price'], 2) }}</span>
+                                            <button type="button" wire:click="removeMergeProduct({{ $index }}, {{ $itemIndex }})" aria-label="Remove {{ $item['name'] }} from bundle"
+                                                class="rounded-full p-0.5 text-secondary-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                                <x-dashboard.icon name="x" class="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    @empty
+                                        <span class="text-[10px] font-semibold text-muted-foreground">No products selected yet.</span>
+                                    @endforelse
+                                    <button type="button" wire:click="toggleProductPicker({{ $index }})"
+                                        class="ml-auto inline-flex h-8 items-center justify-center gap-1 rounded-md border border-input bg-background px-2.5 text-[10px] font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                        <x-dashboard.icon :name="$isPickerOpen ? 'x' : 'plus'" class="h-3 w-3" />
+                                        {{ $isPickerOpen ? 'Close picker' : 'Add product' }}
+                                    </button>
+                                </div>
+
+                                @if ($isPickerOpen)
+                                    <div class="mt-3 rounded-lg border border-border bg-background p-3">
+                                        <div class="relative">
+                                            <x-dashboard.icon name="search" class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                            <input wire:model.live.debounce.300ms="productSearch" id="merge-product-search-{{ $mergeOrder['key'] }}" type="search"
+                                                aria-label="Search bundle products" placeholder="Search all warehouse products..."
+                                                class="h-9 w-full rounded-md border border-input bg-background py-2 pr-3 pl-9 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm" />
+                                        </div>
+                                        <p class="mt-1.5 text-[10px] text-muted-foreground">Search across every warehouse level, then add the products this bundle should contain.</p>
+                                        @error('productSearch') <p class="mt-1.5 text-[10px] text-destructive" role="alert">{{ $message }}</p> @enderror
+
+                                        <div class="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border">
+                                            @forelse ($productResults as $product)
+                                                <button type="button" wire:key="merge-product-{{ $mergeOrder['key'] }}-{{ $product['id'] }}"
+                                                    wire:click="addMergeProduct({{ $index }}, '{{ $product['id'] }}')"
+                                                    class="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                                                        @if ($product['image_url'])
+                                                            <img src="{{ $product['image_url'] }}" alt="" class="h-full w-full object-cover" />
+                                                        @else
+                                                            <x-dashboard.icon name="package" class="h-4 w-4 text-muted-foreground" />
+                                                        @endif
+                                                    </span>
+                                                    <span class="min-w-0 flex-1">
+                                                        <span class="block truncate text-xs font-semibold text-foreground">{{ $product['name'] }}</span>
+                                                        <span class="block text-[10px] text-muted-foreground">{{ ucfirst($product['level']) }} &middot; Day {{ $product['day'] }} &middot; Group {{ strtoupper($product['group']) }}</span>
+                                                    </span>
+                                                    <span class="shrink-0 text-xs font-bold text-foreground">${{ number_format((float) $product['price'], 2) }}</span>
+                                                    <x-dashboard.icon name="plus" class="h-4 w-4 shrink-0 text-primary" />
+                                                </button>
+                                            @empty
+                                                <p class="p-3 text-xs text-muted-foreground">No products match your search.</p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="mt-2 flex items-center justify-end">
+                                    <span class="text-xs font-bold text-foreground">Combined ${{ number_format($mergeCostCents / 100, 2) }}</span>
+                                </div>
                             </div>
                         </div>
                     @empty

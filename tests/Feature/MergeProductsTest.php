@@ -77,12 +77,27 @@ it('increases or reduces the set from the normal thirty orders', function () {
         ->and($user->fresh()->productsPerSet())->toBe(40);
 });
 
-it('places multiple merge orders at their chosen positions and fills the rest with normal orders', function () {
+it('builds merge bundles from admin selected products and calculates their amounts', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'is_admin' => false, 'membership_level' => 'Normal', 'balance' => 5000, 'tasks_completed' => 2,
     ]);
-    WarehouseProduct::factory()->count(40)->create(['level' => 'normal', 'day' => 2, 'group_key' => 'b']);
+
+    $bundleProducts = collect([
+        ['name' => 'Bundle Alpha Chair', 'price' => 100],
+        ['name' => 'Bundle Beta Lamp', 'price' => 40],
+        ['name' => 'Bundle Gamma Desk', 'price' => 20],
+        ['name' => 'Bundle Delta Sofa', 'price' => 200],
+        ['name' => 'Bundle Epsilon Rug', 'price' => 60],
+        ['name' => 'Bundle Zeta Shelf', 'price' => 40],
+    ])->map(fn (array $product): WarehouseProduct => WarehouseProduct::factory()->create([
+        ...$product,
+        'level' => 'normal',
+        'day' => 2,
+        'group_key' => 'b',
+    ]));
+
+    WarehouseProduct::factory()->count(34)->create(['level' => 'normal', 'day' => 2, 'group_key' => 'b']);
 
     $component = Livewire::actingAs($admin)->test(AssignOrders::class)
         ->call('selectUser', $user->id)
@@ -91,14 +106,20 @@ it('places multiple merge orders at their chosen positions and fills the rest wi
     expect($component->get('totalOrders'))->toBe(12);
 
     $component->call('addMergeOrder')
+        ->assertSee('No products selected yet.')
+        ->set('productSearch', 'Bundle Alpha')
+        ->assertSee('Bundle Alpha Chair')
+        ->assertDontSee('Bundle Beta Lamp')
+        ->call('addMergeProduct', 0, $bundleProducts[0]->product_id)
+        ->call('addMergeProduct', 0, $bundleProducts[1]->product_id)
+        ->call('addMergeProduct', 0, $bundleProducts[2]->product_id)
         ->call('addMergeOrder')
+        ->call('addMergeProduct', 1, $bundleProducts[3]->product_id)
+        ->call('addMergeProduct', 1, $bundleProducts[4]->product_id)
+        ->call('addMergeProduct', 1, $bundleProducts[5]->product_id)
         ->assertCount('mergeOrders', 2)
         ->set('mergeOrders.0.position', 3)
-        ->set('mergeOrders.0.commission', '25.00')
-        ->set('mergeOrders.0.negative_balance', '75.00')
         ->set('mergeOrders.1.position', 8)
-        ->set('mergeOrders.1.commission', '40.00')
-        ->set('mergeOrders.1.negative_balance', '120.00')
         ->call('autoAssign')
         ->assertHasNoErrors();
 
@@ -110,12 +131,14 @@ it('places multiple merge orders at their chosen positions and fills the rest wi
         ->and($merges)->toHaveCount(2)
         ->and($merges->pluck('merge_position')->all())->toBe([3, 8])
         ->and($merges->pluck('available_after_tasks')->all())->toBe([4, 9])
-        ->and((int) $merges[0]->commission_amount)->toBe(2500)
-        ->and((int) $merges[1]->commission_amount)->toBe(4000)
-        ->and((int) $merges[0]->merge_negative_balance)->toBe(7500)
-        ->and((int) $merges[1]->merge_negative_balance)->toBe(12000)
-        ->and($merges[0]->merge_items)->toHaveCount(3)
-        ->and($merges[1]->merge_items)->toHaveCount(3);
+        ->and(array_column($merges[0]->merge_items, 'id'))->toBe($bundleProducts->take(3)->pluck('product_id')->all())
+        ->and(array_column($merges[1]->merge_items, 'id'))->toBe($bundleProducts->skip(3)->pluck('product_id')->all())
+        ->and((float) $merges[0]->cost)->toBe(160.0)
+        ->and((int) $merges[0]->commission_amount)->toBe(800)
+        ->and((int) $merges[0]->merge_negative_balance)->toBe(11000)
+        ->and((float) $merges[1]->cost)->toBe(300.0)
+        ->and((int) $merges[1]->commission_amount)->toBe(1500)
+        ->and((int) $merges[1]->merge_negative_balance)->toBe(25000);
 
     expect($user->fresh()->productsPerSet())->toBe(14);
 });
@@ -147,16 +170,78 @@ it('will not add more merge orders than the total orders', function () {
     expect($component->get('mergeOrders'))->toHaveCount(2);
 });
 
+it('requires at least one product in every merge bundle', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal']);
+    WarehouseProduct::factory()->count(6)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
+
+    Livewire::actingAs($admin)->test(AssignOrders::class)
+        ->call('selectUser', $user->id)
+        ->set('totalOrders', 2)
+        ->call('addMergeOrder')
+        ->call('autoAssign')
+        ->assertHasErrors('mergeOrders.0.items');
+
+    expect(CompletedTask::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('will not put the same product in two merge bundles', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal']);
+    $products = WarehouseProduct::factory()->count(6)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
+
+    $component = Livewire::actingAs($admin)->test(AssignOrders::class)
+        ->call('selectUser', $user->id)
+        ->set('totalOrders', 3)
+        ->call('addMergeOrder')
+        ->call('addMergeOrder')
+        ->call('addMergeProduct', 0, $products[0]->product_id)
+        ->assertHasNoErrors()
+        ->call('addMergeProduct', 1, $products[0]->product_id)
+        ->assertHasErrors('productSearch')
+        ->assertSee('That product is already in a merge bundle.');
+
+    expect($component->get('mergeOrders.1.items'))->toBeEmpty();
+});
+
+it('lets admins choose bundle products from any warehouse level', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal']);
+    WarehouseProduct::factory()->count(6)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
+    $silverProduct = WarehouseProduct::factory()->create([
+        'name' => 'Silver Only Item', 'level' => 'silver', 'day' => 1, 'group_key' => 'a',
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(AssignOrders::class)
+        ->call('selectUser', $user->id)
+        ->set('totalOrders', 2)
+        ->call('addMergeOrder')
+        ->set('productSearch', 'Silver Only')
+        ->assertSee('Silver Only Item')
+        ->assertSee('Silver')
+        ->call('addMergeProduct', 0, $silverProduct->product_id)
+        ->assertHasNoErrors()
+        ->call('addMergeProduct', 0, 'missing-product')
+        ->assertHasErrors('productSearch')
+        ->assertSee('That product is no longer available in the warehouse.');
+
+    expect($component->get('mergeOrders.0.items'))->toHaveCount(1)
+        ->and($component->get('mergeOrders.0.items.0.id'))->toBe($silverProduct->product_id)
+        ->and($component->get('mergeOrders.0.items.0.level'))->toBe('silver');
+});
+
 it('rejects duplicate or out of range merge positions', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['is_admin' => false, 'membership_level' => 'Normal']);
-    WarehouseProduct::factory()->count(12)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
+    $products = WarehouseProduct::factory()->count(12)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
 
     $component = Livewire::actingAs($admin)->test(AssignOrders::class)
         ->call('selectUser', $user->id)
         ->set('totalOrders', 5)
         ->call('addMergeOrder')
+        ->call('addMergeProduct', 0, $products[0]->product_id)
         ->call('addMergeOrder')
+        ->call('addMergeProduct', 1, $products[1]->product_id)
         ->set('mergeOrders.0.position', 2)
         ->set('mergeOrders.1.position', 2)
         ->call('autoAssign')
@@ -194,23 +279,34 @@ it('requires existing open orders to be cleared before assigning', function () {
         ->and(CompletedTask::query()->where('user_id', $user->id)->count())->toBe(30);
 });
 
-it('applies the configured merge negative balance when the merge order starts', function () {
+it('applies the automatically calculated merge negative balance when the order starts', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'is_admin' => false, 'membership_level' => 'Normal', 'balance' => 10000,
         'has_made_first_deposit' => true, 'tasks_completed' => 0,
     ]);
-    WarehouseProduct::factory()->count(6)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
+    $bundleProduct = WarehouseProduct::factory()->create([
+        'name' => 'Merge Top Up Item', 'price' => 175, 'level' => 'normal', 'day' => 1, 'group_key' => 'a',
+    ]);
+    WarehouseProduct::factory()->count(5)->create(['level' => 'normal', 'day' => 1, 'group_key' => 'a']);
 
     Livewire::actingAs($admin)->test(AssignOrders::class)
         ->call('selectUser', $user->id)
         ->set('totalOrders', 2)
         ->call('addMergeOrder')
+        ->call('addMergeProduct', 0, $bundleProduct->product_id)
         ->set('mergeOrders.0.position', 1)
-        ->set('mergeOrders.0.commission', '10.00')
-        ->set('mergeOrders.0.negative_balance', '75.00')
+        ->assertSee('$8.75')
+        ->assertSee('-$75.00')
         ->call('autoAssign')
         ->assertHasNoErrors();
+
+    $merge = CompletedTask::query()->where('user_id', $user->id)->where('is_merge', true)->first();
+
+    expect($merge)->not->toBeNull()
+        ->and((int) $merge->commission_amount)->toBe(875)
+        ->and((int) $merge->merge_negative_balance)->toBe(7500)
+        ->and((float) $merge->cost)->toBe(175.0);
 
     Livewire::actingAs($user->fresh())->test(Start::class)
         ->call('startTask')
