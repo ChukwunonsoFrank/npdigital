@@ -3,10 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\WarehouseProduct;
-use App\Support\ProductBrand;
 use App\Support\ProductWarehouse;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 
 class SeedWarehouseGroupCProducts extends Command
 {
@@ -76,16 +74,12 @@ class SeedWarehouseGroupCProducts extends Command
 
     private function seedLevel(string $level, int $count): void
     {
-        $products = $this->products($level, $count);
-
-        if ($products === []) {
+        if (ProductWarehouse::catalog($level) === []) {
             $this->warn(sprintf('No catalog products found for %s. Skipping.', ProductWarehouse::label($level)));
 
             return;
         }
 
-        $range = ProductWarehouse::priceRange($level);
-        $commission = ProductWarehouse::commission($level);
         $seeded = 0;
 
         for ($day = 1; $day <= ProductWarehouse::DAY_COUNT; $day++) {
@@ -94,66 +88,21 @@ class SeedWarehouseGroupCProducts extends Command
                 ->where('day', $day)
                 ->where('group_key', 'c');
 
-            if ($existing->exists()) {
-                if (! $this->option('force')) {
-                    $this->warn(sprintf(
-                        '%s day %d group C already has products. Use --force to replace them.',
-                        ProductWarehouse::label($level),
-                        $day,
-                    ));
+            if ($existing->exists() && ! $this->option('force')) {
+                $this->warn(sprintf(
+                    '%s day %d group C already has products. Use --force to replace them.',
+                    ProductWarehouse::label($level),
+                    $day,
+                ));
 
-                    continue;
-                }
-
-                $existing->delete();
+                continue;
             }
 
-            $now = now();
-            $rows = [];
-
-            for ($index = 0; $index < $count; $index++) {
-                $product = $products[$index % count($products)];
-
-                $rows[] = [
-                    'product_id' => sprintf('group-c-%s-d%d-%s', $level, $day, Str::uuid()),
-                    'level' => $level,
-                    'day' => $day,
-                    'group_key' => 'c',
-                    'name' => $product['name'],
-                    'image_url' => $product['img'] ?? null,
-                    'brand' => ProductBrand::random(),
-                    'description' => $product['desc'] ?? null,
-                    'price' => random_int($range['min'], $range['max']),
-                    'commission' => $commission,
-                    'is_custom' => true,
-                    'is_deleted' => false,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-
-            WarehouseProduct::query()->insert($rows);
-            $seeded += count($rows);
+            $seeded += ProductWarehouse::replaceGroupC($level, $day, $count);
         }
 
         if ($seeded > 0) {
             $this->info(sprintf('Seeded %d group C products for %s.', $seeded, ProductWarehouse::label($level)));
         }
-    }
-
-    /**
-     * @return list<array{name: string, price: int, desc: string, img: string|null}>
-     */
-    private function products(string $level, int $count): array
-    {
-        $catalog = ProductWarehouse::catalog($level);
-
-        if ($catalog === []) {
-            return [];
-        }
-
-        shuffle($catalog);
-
-        return array_slice($catalog, 0, min($count, count($catalog)));
     }
 }

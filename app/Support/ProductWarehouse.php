@@ -118,6 +118,56 @@ class ProductWarehouse
     }
 
     /**
+     * Replace the group C products of a level day with real catalog products.
+     */
+    public static function replaceGroupC(string $level, int $day, int $count = self::PRODUCTS_PER_SET): int
+    {
+        $catalog = self::catalog($level);
+
+        if ($catalog === []) {
+            return 0;
+        }
+
+        WarehouseProduct::query()
+            ->where('level', $level)
+            ->where('day', $day)
+            ->where('group_key', 'c')
+            ->delete();
+
+        shuffle($catalog);
+
+        $range = self::priceRange($level);
+        $commission = self::commission($level);
+        $now = now();
+        $rows = [];
+
+        for ($index = 0; $index < $count; $index++) {
+            $product = $catalog[$index % count($catalog)];
+
+            $rows[] = [
+                'product_id' => sprintf('group-c-%s-d%d-%s', $level, $day, Str::uuid()),
+                'level' => $level,
+                'day' => $day,
+                'group_key' => 'c',
+                'name' => $product['name'],
+                'image_url' => $product['img'] ?? null,
+                'brand' => ProductBrand::random(),
+                'description' => $product['desc'] ?? null,
+                'price' => random_int($range['min'], $range['max']),
+                'commission' => $commission,
+                'is_custom' => true,
+                'is_deleted' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        WarehouseProduct::query()->insert($rows);
+
+        return count($rows);
+    }
+
+    /**
      * Products per day group of the level, including admin additions and deletions.
      *
      * @return array<int, array<string, int>>

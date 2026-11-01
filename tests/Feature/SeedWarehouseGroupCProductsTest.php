@@ -27,6 +27,34 @@ it('seeds thirty group c products for every day of a membership level', function
         ->and((float) $product->price)->toBeLessThanOrEqual(38);
 });
 
+it('replaces placeholder group c products with real catalog products', function () {
+    WarehouseProduct::factory()->create([
+        'level' => 'normal',
+        'day' => 1,
+        'group_key' => 'c',
+        'name' => '1',
+        'price' => 10,
+    ]);
+
+    $seeded = ProductWarehouse::replaceGroupC('normal', 1);
+
+    expect($seeded)->toBe(30)
+        ->and(WarehouseProduct::query()->where('level', 'normal')->where('day', 1)->where('group_key', 'c')->where('name', '1')->exists())
+        ->toBeFalse();
+
+    $items = ProductWarehouse::groupItems('normal', 1, 'c');
+    $catalogNames = array_column(ProductWarehouse::catalog('normal'), 'name');
+
+    expect($items)->toHaveCount(30)
+        ->and(array_column($items, 'name'))->not->toContain('1');
+
+    foreach ($items as $item) {
+        expect($catalogNames)->toContain($item['name'])
+            ->and($item['price'])->toBeGreaterThanOrEqual(28)
+            ->and($item['price'])->toBeLessThanOrEqual(38);
+    }
+});
+
 it('seeds every warehouse level by default', function () {
     $this->artisan('app:seed-warehouse-group-c')->assertSuccessful();
 
