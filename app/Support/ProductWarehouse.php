@@ -93,6 +93,31 @@ class ProductWarehouse
     }
 
     /**
+     * Catalog products used to build the generated groups of a level.
+     *
+     * @return list<array{name: string, price: int, desc: string, img: string|null}>
+     */
+    public static function catalog(string $level): array
+    {
+        return self::data()['catalogs'][self::dataLevel($level)];
+    }
+
+    /**
+     * Price range applied to warehouse products of a level.
+     *
+     * @return array{min: int, max: int}
+     */
+    public static function priceRange(string $level): array
+    {
+        $clamp = self::data()['clamp'][self::dataLevel($level)];
+
+        return [
+            'min' => (int) $clamp['min'],
+            'max' => (int) $clamp['max'],
+        ];
+    }
+
+    /**
      * Products per day group of the level, including admin additions and deletions.
      *
      * @return array<int, array<string, int>>
