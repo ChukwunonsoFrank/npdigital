@@ -14,7 +14,7 @@ class ResetDailyTasks
     /**
      * Execute the job.
      */
-    public function handle(string $trigger = 'scheduled'): int
+    public function handle(string $trigger = 'manual'): int
     {
         $lock = Cache::lock('daily-task-reset', 900);
 
