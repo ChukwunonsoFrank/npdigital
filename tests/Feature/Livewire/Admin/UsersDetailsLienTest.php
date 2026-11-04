@@ -74,10 +74,10 @@ it('loads training balance for user', function () {
     expect($user->fresh()->training_balance)->toBe(12550);
 });
 
-it('marks first deposit as made when admin credits at ten dollar balance', function () {
+it('marks first deposit as made when admin credits at the registration bonus balance', function () {
     $admin = User::factory()->create();
     $user = User::factory()->create([
-        'balance' => 1000,
+        'balance' => 3000,
         'has_made_first_deposit' => false,
     ]);
 
@@ -87,7 +87,7 @@ it('marks first deposit as made when admin credits at ten dollar balance', funct
         ->call('addBonus');
 
     $user->refresh();
-    expect($user->balance)->toBe(11000);
+    expect($user->balance)->toBe(13000);
     expect($user->has_made_first_deposit)->toBeTrue();
 });
 

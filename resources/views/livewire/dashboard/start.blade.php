@@ -158,7 +158,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h3 class="font-display text-sm font-bold text-foreground">Daily progress</h3>
-                    <p class="text-[11px] text-muted-foreground">{{ $setsCompleted }}/{{ \App\Models\User::DAILY_TASK_SETS }} sets completed today</p>
+                    <p class="text-[11px] text-muted-foreground">Day {{ $user->currentDay() }} &middot; {{ $setsCompleted }}/{{ \App\Models\User::DAILY_TASK_SETS }} sets completed today</p>
                 </div>
                 <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
                     <x-dashboard.icon name="clock" class="h-3 w-3" /> Resets daily
@@ -197,7 +197,7 @@
                 @if ($dailyComplete)
                     Daily limit reached
                 @else
-                    START TASK
+                    GET PRODUCT
                 @endif
             </button>
         </div>
@@ -205,7 +205,7 @@
         <div class="space-y-2 rounded-xl border bg-card p-4">
             <h3 class="font-display text-sm font-bold">Operating Hours</h3>
             <p class="text-sm text-muted-foreground">&bull; Users may optimize the Product during the daily operation hours
-                from 10:00 to 22:59</p>
+                from 10:00 AM to 10:00 PM EST</p>
             <div class="rounded-lg border bg-accent/10 p-3 text-center">
                 <p class="text-xs text-muted-foreground"><strong
                         class="font-semibold text-foreground">Notice:</strong> For further explanation, please click
@@ -268,6 +268,10 @@
         });
 
         $wire.on('minimum-balance-required', (event) => {
+            toast(event.message)
+        });
+
+        $wire.on('outside-operating-hours', (event) => {
             toast(event.message)
         });
 

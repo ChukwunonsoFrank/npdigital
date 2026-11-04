@@ -146,10 +146,11 @@ class Wallet extends Component
     public function render()
     {
         $user = auth()->user();
+        $negativeBalance = (int) $user->negative_balance;
 
         return view('livewire.dashboard.wallet', [
-            'availableBalance' => ((int) $user->balance) / 100,
-            'onHoldBalance' => ((int) $user->processing_amount) / 100,
+            'availableBalance' => ($negativeBalance > 0 ? -$negativeBalance : (int) $user->balance) / 100,
+            'onHoldBalance' => ($negativeBalance > 0 ? (int) $user->balance : (int) $user->processing_amount) / 100,
             'wallets' => $user->wallets()->latest()->get(),
             'transactions' => $this->transactions(),
             'cryptocurrencies' => self::CRYPTOCURRENCIES,

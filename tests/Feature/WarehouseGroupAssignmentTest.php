@@ -11,6 +11,10 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => freezeTaskOperatingHours());
+
+afterEach(fn () => unfreezeTaskOperatingHours());
+
 it('delivers only unsubmitted products in the assigned level and group and disables a finished group', function (string $level) {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([

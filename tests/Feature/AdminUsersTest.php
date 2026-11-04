@@ -570,6 +570,82 @@ it('clears the selected user submission record and on-hold balance', function (b
         ->and($otherUser->tasks()->count())->toBe(1);
 })->with([false, true]);
 
+it('only shows the reset tasks action once the user has completed a set', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'name' => 'Daniella Dom',
+        'tasks_completed' => 5,
+        'task_batch' => 0,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->assertDontSeeHtml('wire:click="resetTasks"');
+
+    $user->update(['tasks_completed' => 0, 'task_batch' => 1]);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->assertSeeHtml('wire:click="resetTasks"')
+        ->assertSee('Reset Tasks')
+        ->assertSeeHtml('bg-emerald-600');
+});
+
+it('resets a completed task set so the user can continue', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'name' => 'Daniella Dom',
+        'tasks_completed' => 0,
+        'task_batch' => 1,
+        'task_set_resets' => 0,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('resetTasks')
+        ->assertDispatched('toast', message: 'Tasks reset. Daniella Dom can continue.')
+        ->assertDispatched('task-user-updated');
+
+    $user->refresh();
+
+    expect($user->tasks_completed)->toBe(0)
+        ->and($user->task_set_resets)->toBe(1)
+        ->and($user->hasReachedTaskSetLimit())->toBeFalse();
+});
+
+it('ignores a task reset when the user has not completed a set', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'tasks_completed' => 4,
+        'task_batch' => 0,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('resetTasks')
+        ->assertNotDispatched('toast');
+
+    expect($user->fresh()->tasks_completed)->toBe(4)
+        ->and($user->fresh()->task_set_resets)->toBe(0);
+});
+
+it('forbids non admins from resetting user tasks', function () {
+    $user = User::factory()->create(['is_admin' => false]);
+    $target = User::factory()->create(['is_admin' => false, 'task_batch' => 1]);
+
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('showUserDetails', $target->id)
+        ->call('resetTasks')
+        ->assertForbidden();
+});
+
 it('opens the manage funds modal with the selected user balances', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
@@ -620,7 +696,7 @@ it('requires a valid amount before applying a funds action', function () {
 it('adds funds to the selected user and marks the first deposit rule', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
-        'balance' => 1000,
+        'balance' => 3000,
         'has_made_first_deposit' => false,
     ]);
 
@@ -637,7 +713,7 @@ it('adds funds to the selected user and marks the first deposit rule', function 
 
     $user->refresh();
 
-    expect($user->balance)->toBe(11000)
+    expect($user->balance)->toBe(13000)
         ->and($user->has_made_first_deposit)->toBeTrue();
 });
 
@@ -1082,7 +1158,31 @@ it('updates a user negative balance from the admin adjust dialog', function () {
         ->assertSet('showAdjustNegative', false)
         ->assertDispatched('toast', message: 'Negative balance updated.');
 
-    expect((int) $user->fresh()->negative_balance)->toBe(1234);
+    $user->refresh();
+
+    expect((int) $user->negative_balance)->toBe(1234)
+        ->and((int) $user->balance)->toBe(3766);
+});
+
+it('does not credit the user balance when the negative balance is increased', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'balance' => 1000,
+        'negative_balance' => 5000,
+    ]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openAdjustNegative')
+        ->set('negativeBalanceAmount', '90.00')
+        ->call('saveNegativeBalance')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+
+    expect((int) $user->negative_balance)->toBe(9000)
+        ->and((int) $user->balance)->toBe(1000);
 });
 
 it('rejects negative balance values that are not non-negative amounts', function () {
@@ -1098,6 +1198,86 @@ it('rejects negative balance values that are not non-negative amounts', function
         ->assertSet('showAdjustNegative', true);
 
     expect((int) $user->fresh()->negative_balance)->toBe(5000);
+});
+
+it('clears a user negative balance and credits the merge commission to their balance', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'balance' => 100000,
+        'negative_balance' => 5000,
+    ]);
+
+    $user->tasks()->create([
+        'title' => 'Pending merge', 'cost' => '120.00', 'task_image_path' => '',
+        'status' => 'pending', 'rating' => '0', 'rating_id' => 'merge-clear',
+        'is_merge' => true, 'merge_items' => [['id' => 'one', 'name' => 'One', 'price' => 120]], 'merge_position' => 1,
+        'commission_percentage' => 5, 'commission_amount' => 600,
+    ]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->assertSee('Clear Negative')
+        ->call('clearNegative')
+        ->assertDispatched('toast', message: 'Negative balance cleared.')
+        ->assertDispatched('task-user-updated');
+
+    $user->refresh();
+
+    expect((int) $user->negative_balance)->toBe(0)
+        ->and((int) $user->balance)->toBe(105600);
+});
+
+it('keeps the merge commission fixed when the negative balance is adjusted before clearing', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'balance' => 50000,
+        'negative_balance' => 5000,
+    ]);
+
+    $task = $user->tasks()->create([
+        'title' => 'Pending merge', 'cost' => '120.00', 'task_image_path' => '',
+        'status' => 'pending', 'rating' => '0', 'rating_id' => 'merge-adjust',
+        'is_merge' => true, 'merge_items' => [['id' => 'one', 'name' => 'One', 'price' => 120]], 'merge_position' => 1,
+        'commission_percentage' => 5, 'commission_amount' => 600, 'merge_negative_balance' => 5000,
+    ]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('openAdjustNegative')
+        ->set('negativeBalanceAmount', '90.00')
+        ->call('saveNegativeBalance');
+
+    expect((int) $task->fresh()->commission_amount)->toBe(600);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('clearNegative');
+
+    $user->refresh();
+
+    expect((int) $task->fresh()->commission_amount)->toBe(600)
+        ->and((int) $user->negative_balance)->toBe(0)
+        ->and((int) $user->balance)->toBe(50000 + 9000 + 600);
+});
+
+it('clears a user negative balance without a merge task', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'balance' => 1000,
+        'negative_balance' => 2500,
+    ]);
+
+    Livewire::actingAs($admin)->test(Users::class)
+        ->call('showUserDetails', $user->id)
+        ->call('clearNegative');
+
+    $user->refresh();
+
+    expect((int) $user->negative_balance)->toBe(0)
+        ->and((int) $user->balance)->toBe(3500);
 });
 
 it('credits a golden egg to a user from the admin dialog', function () {
@@ -1143,6 +1323,8 @@ it('forbids non admins from adjusting negative balances or sending golden eggs',
         ->call('openAdjustNegative')->assertForbidden();
     Livewire::actingAs($user)->test(Users::class)
         ->call('saveNegativeBalance')->assertForbidden();
+    Livewire::actingAs($user)->test(Users::class)
+        ->call('clearNegative')->assertForbidden();
     Livewire::actingAs($user)->test(Users::class)
         ->call('openGoldenEgg')->assertForbidden();
     Livewire::actingAs($user)->test(Users::class)

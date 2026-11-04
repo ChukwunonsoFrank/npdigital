@@ -158,6 +158,25 @@ class Users extends Component
         $this->redirect(route('admin.dashboard.assign-orders', ['user' => $user->id]));
     }
 
+    public function resetTasks(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user || ! $user->hasReachedTaskSetLimit()) {
+            return;
+        }
+
+        $user->update([
+            'tasks_completed' => 0,
+            'task_set_resets' => (int) $user->task_batch - User::FREE_TASK_SETS + 1,
+        ]);
+
+        $this->dispatch('toast', message: 'Tasks reset. '.($user->name ?: $user->username).' can continue.');
+        $this->dispatch('task-user-updated');
+    }
+
     public function openAdjustNegative(): void
     {
         abort_unless(Auth::user()?->is_admin, 403);
@@ -198,12 +217,63 @@ class Users extends Component
             'negativeBalanceAmount.required' => 'Enter the negative balance amount.',
         ]);
 
-        $user->update([
-            'negative_balance' => (int) round(((float) $validated['negativeBalanceAmount']) * 100),
-        ]);
+        $newNegativeInCents = (int) round(((float) $validated['negativeBalanceAmount']) * 100);
+
+        DB::transaction(function () use ($user, $newNegativeInCents): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                return;
+            }
+
+            $currentNegativeInCents = max(0, (int) $lockedUser->negative_balance);
+
+            if ($newNegativeInCents < $currentNegativeInCents) {
+                $lockedUser->balance = (int) $lockedUser->balance + ($currentNegativeInCents - $newNegativeInCents);
+            }
+
+            $lockedUser->negative_balance = $newNegativeInCents;
+            $lockedUser->save();
+        });
 
         $this->closeAdjustNegative();
         $this->dispatch('toast', message: 'Negative balance updated.');
+        $this->dispatch('task-user-updated');
+    }
+
+    public function clearNegative(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        DB::transaction(function () use ($user): void {
+            $lockedUser = User::query()->lockForUpdate()->find($user->id);
+
+            if (! $lockedUser) {
+                return;
+            }
+
+            $mergeTask = $lockedUser->tasks()
+                ->where('is_merge', true)
+                ->whereIn('status', ['pending', 'queued'])
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->orderBy('id')
+                ->first();
+
+            $negativeInCents = max(0, (int) $lockedUser->negative_balance);
+            $commissionInCents = max(0, $mergeTask?->profitInCents(AssignOrders::MERGE_PERCENTAGE) ?? 0);
+
+            $lockedUser->balance = (int) $lockedUser->balance + $negativeInCents + $commissionInCents;
+            $lockedUser->negative_balance = 0;
+            $lockedUser->save();
+        });
+
+        $this->dispatch('toast', message: 'Negative balance cleared.');
         $this->dispatch('task-user-updated');
     }
 
@@ -804,7 +874,7 @@ class Users extends Component
 
             if (
                 ! $lockedUser->has_made_first_deposit
-                && $startingBalance === 1000
+                && $startingBalance === User::REGISTRATION_BONUS_IN_CENTS
                 && $amountInCents >= 10000
             ) {
                 $lockedUser->has_made_first_deposit = true;

@@ -45,7 +45,7 @@ it('shows assigned and unassigned members in their account columns and searches 
     ]);
 
     Livewire::actingAs($admin)->test(AdminTasks::class)
-        ->assertSeeInOrder(['Real Accounts', 'Real Member', 'Previous Level Only', 'Not assigned', 'Virtual Accounts', 'Virtual Member', 'Unassigned Virtual', 'Not assigned'])
+        ->assertSeeInOrder(['Real Accounts', 'Real Member', 'Previous Level Only', 'Day 1', 'Virtual Accounts', 'Virtual Member', 'Unassigned Virtual', 'Day 1'])
         ->assertDontSee($admin->username)
         ->assertSee('Day 2 B')->assertSee('6/30')
         ->assertViewHas('realCount', 2)->assertViewHas('virtualCount', 2)

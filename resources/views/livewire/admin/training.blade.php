@@ -36,7 +36,7 @@ class extends Component {
 
     public string $membershipLevel = '';
 
-    public string $balance = '0.00';
+    public string $balance = '30.00';
 
     public string $referredBy = '';
 

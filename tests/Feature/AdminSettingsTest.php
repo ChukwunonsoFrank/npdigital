@@ -10,6 +10,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => freezeTaskOperatingHours());
+
+afterEach(fn () => unfreezeTaskOperatingHours());
+
 it('shows all platform settings in reference order and links the admin navigation', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
@@ -30,8 +34,8 @@ it('shows all platform settings in reference order and links the admin navigatio
         ])
         ->assertSee('href="'.route('admin.settings').'"', false)
         ->assertSee('aria-label="Back to overview"', false)
-        ->assertSee('$10.00 registration bonus')
-        ->assertSee('Every newly registered account receives a one-time $10.00 welcome bonus.')
+        ->assertSee('$30.00 registration bonus')
+        ->assertSee('Every newly registered account receives a one-time $30.00 welcome bonus.')
         ->assertSee('Not configured')
         ->assertDontSee('Carousel Posters')
         ->assertDontSee('Events & Rewards')
@@ -274,15 +278,14 @@ it('rejects invalid check-in settings without saving', function (array $mileston
     'missing terms' => [[['day' => 3, 'reward' => 100]], '', 'checkInTerms'],
 ]);
 
-it('saves the membership chart for the user dashboard without changing financial membership records', function () {
+it('saves the membership chart and syncs commissions to the financial membership records', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['is_admin' => false]);
     $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
-    $levels = \App\Models\MembershipLevel::all()->toArray();
     PlatformSetting::factory()->create(['whatsapp_support_number' => '+1234567890']);
 
     Volt::actingAs($admin)->test('admin.settings')->call('editMembershipChart')
-        ->set('membershipChartRows.1.name', 'Silver Plus')
+        ->set('membershipChartRows.1.name', 'Silver')
         ->set('membershipChartRows.1.deposit', '$425.50')
         ->set('membershipChartRows.1.tasks', 30)
         ->set('membershipChartRows.1.commission', '0.85%')
@@ -290,19 +293,78 @@ it('saves the membership chart for the user dashboard without changing financial
         ->assertDispatched('notify', message: 'Membership level chart saved.', type: 'success');
 
     Volt::actingAs($admin)->test('admin.settings')->call('editMembershipChart')
-        ->assertSet('membershipChartRows.1.name', 'Silver Plus')
+        ->assertSet('membershipChartRows.1.name', 'Silver')
         ->assertSet('membershipChartRows.1.deposit', '$425.50')
         ->assertSet('membershipChartRows.1.tasks', 30)
         ->assertSet('membershipChartRows.1.commission', '0.85%')
         ->set('membershipChartRows.1.name', 'Discarded draft')->call('cancelMembershipChart')
         ->assertSet('editingMembershipChart', false)->call('editMembershipChart')
-        ->assertSet('membershipChartRows.1.name', 'Silver Plus');
+        ->assertSet('membershipChartRows.1.name', 'Silver');
 
     \Livewire\Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Activities::class)
-        ->assertSeeInOrder(['Silver Plus', '$425.50', '30', '0.85%']);
-    expect(\App\Models\MembershipLevel::all()->toArray())->toBe($levels)
+        ->assertSeeInOrder(['Silver', '$425.50', '30', '0.85%']);
+    expect(\App\Models\MembershipLevel::query()->where('name', 'Silver')->value('percentage'))->toBe('0.85')
+        ->and(\App\Models\MembershipLevel::query()->where('name', 'Gold')->value('percentage'))->toBe('1.00')
         ->and(PlatformSetting::current()->whatsapp_support_number)->toBe('+1234567890')
         ->and(PlatformSetting::current()->check_in_program)->toBeNull();
+});
+
+it('applies saved chart commissions to real and training account payouts', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->seed(\Database\Seeders\MembershipLevelSeeder::class);
+
+    \App\Models\Task::create([
+        'title' => 'Chart Commission Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'brand' => 'walmart',
+        'task_level' => 'Normal',
+    ]);
+
+    Volt::actingAs($admin)->test('admin.settings')->call('editMembershipChart')
+        ->set('membershipChartRows.0.commission', '2.50%')
+        ->call('saveMembershipChart')->assertHasNoErrors();
+
+    expect(\App\Models\MembershipLevel::query()->where('name', 'Normal')->value('percentage'))->toBe('2.50');
+
+    $real = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 50000,
+        'has_made_first_deposit' => true,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+    ]);
+
+    \Livewire\Livewire::actingAs($real)->test(\App\Livewire\Dashboard\Start::class)
+        ->call('startTask')
+        ->assertSee('2.5%')
+        ->call('submitTask')
+        ->assertDispatched('task-completed');
+
+    expect($real->fresh()->daily_commission)->toBe(250)
+        ->and($real->fresh()->total_commission)->toBe(250)
+        ->and($real->fresh()->balance)->toBe(50250);
+
+    $training = User::factory()->create([
+        'membership_level' => 'Normal',
+        'is_training' => true,
+        'balance' => 0,
+        'training_balance' => 50000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+    ]);
+
+    \Livewire\Livewire::actingAs($training)->test(\App\Livewire\Dashboard\Start::class)
+        ->call('startTask')
+        ->assertSee('2.5%')
+        ->call('submitTask')
+        ->assertDispatched('task-completed');
+
+    expect($training->fresh()->daily_commission)->toBe(250)
+        ->and($training->fresh()->total_commission)->toBe(250)
+        ->and($training->fresh()->training_balance)->toBe(50250)
+        ->and($training->fresh()->balance)->toBe(0);
 });
 
 it('rejects invalid membership chart fields without replacing the saved chart', function (string $field, mixed $value) {

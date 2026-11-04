@@ -9,6 +9,8 @@ use Livewire\Livewire;
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
+    freezeTaskOperatingHours();
+
     $this->membershipLevel = MembershipLevel::create([
         'name' => 'Normal',
         'percentage' => 0.5,
@@ -23,6 +25,8 @@ beforeEach(function () {
         'processing_amount' => 0,
     ]);
 });
+
+afterEach(fn () => unfreezeTaskOperatingHours());
 
 test('record page displays submitted tasks', function () {
     CompletedTask::create([

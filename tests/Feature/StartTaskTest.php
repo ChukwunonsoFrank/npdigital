@@ -6,11 +6,15 @@ use App\Models\CompletedTask;
 use App\Models\MembershipLevel;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\OperatingHours;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
+    freezeTaskOperatingHours();
+
     $this->membershipLevel = MembershipLevel::create([
         'name' => 'Normal',
         'percentage' => 0.5,
@@ -35,6 +39,8 @@ beforeEach(function () {
     ]);
 });
 
+afterEach(fn () => unfreezeTaskOperatingHours());
+
 test('start page displays user balance data', function () {
     Livewire::actingAs($this->user)
         ->test(Start::class)
@@ -44,7 +50,7 @@ test('start page displays user balance data', function () {
         ->assertSee('500.00')
         ->assertSee('0.00')
         ->assertSee('0/3 sets completed today')
-        ->assertSee('START TASK');
+        ->assertSee('GET PRODUCT');
 });
 
 test('start page shows a uniform set size for every membership level', function (string $level) {
@@ -55,7 +61,7 @@ test('start page shows a uniform set size for every membership level', function 
         ->test(Start::class)
         ->assertSee('0/3 sets completed today')
         ->assertSee('0 / 30 products')
-        ->assertSee('START TASK');
+        ->assertSee('GET PRODUCT');
 })->with(['Silver', 'Gold', 'Platinum', 'Diamond', 'VVIP']);
 
 test('optimize page displays commission in USDT', function () {
@@ -145,7 +151,7 @@ test('start page renders the task modal after starting a task', function () {
         ->assertSee('Commission:')
         ->assertSee('Rating (optional):')
         ->assertSee('Review (optional):')
-        ->assertSee('Submit Task')
+        ->assertSee('Promote Product')
         ->assertSeeHtml('brands/walmart.png')
         ->assertDontSee('Pending Product');
 });
@@ -489,12 +495,34 @@ test('user without a first deposit cannot start tasks', function (int $taskBatch
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
 })->with([0, 1]);
 
-test('user who has made first deposit can continue later batches', function () {
+test('user who completed the free task set is blocked until support resets the tasks', function (int $taskBatch) {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 50000,
+        'tasks_completed' => 0,
+        'task_batch' => $taskBatch,
+        'has_made_first_deposit' => true,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('open-task-modal')
+        ->assertDispatched('task-limit-reached', message: 'You have completed your free set for today. Contact customer support to reset your tasks and continue.');
+
+    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
+})->with([1, 2, 3]);
+
+test('user can continue after support grants an extra set', function () {
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
         'task_batch' => 1,
+        'task_set_resets' => 1,
         'has_made_first_deposit' => true,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -508,45 +536,6 @@ test('user who has made first deposit can continue later batches', function () {
         ->assertNoRedirect();
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeTrue();
-});
-
-test('user who has completed two task batches can start the third set', function () {
-    $user = User::factory()->create([
-        'membership_level' => 'Normal',
-        'balance' => 50000,
-        'tasks_completed' => 0,
-        'task_batch' => 2,
-        'has_made_first_deposit' => true,
-        'daily_commission' => 0,
-        'total_commission' => 0,
-        'processing_amount' => 0,
-    ]);
-
-    Livewire::actingAs($user)
-        ->test(Start::class)
-        ->call('startTask')
-        ->assertDispatched('open-task-modal')
-        ->assertNoRedirect();
-
-    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeTrue();
-});
-
-test('user who has completed three task batches is blocked until reset', function () {
-    $user = User::factory()->create([
-        'membership_level' => 'Normal',
-        'balance' => 50000,
-        'tasks_completed' => 0,
-        'task_batch' => 3,
-        'has_made_first_deposit' => true,
-        'daily_commission' => 0,
-        'total_commission' => 0,
-        'processing_amount' => 0,
-    ]);
-
-    Livewire::actingAs($user)
-        ->test(Start::class)
-        ->call('startTask')
-        ->assertDispatched('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.');
 });
 
 test('user with a required upgrade cannot start tasks', function () {
@@ -676,4 +665,128 @@ test('user who upgraded to the required level can start and submit tasks', funct
 
     expect($completedTask->status)->toBe('approved')
         ->and($user->fresh()->tasks_completed)->toBe(1);
+});
+
+test('real account task commission uses the membership level percentage', function () {
+    $this->membershipLevel->update(['percentage' => 2.5]);
+
+    Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertDispatched('open-task-modal')
+        ->assertSee('2.5%')
+        ->call('submitTask')
+        ->assertDispatched('task-completed');
+
+    $this->user->refresh();
+
+    expect($this->user->daily_commission)->toBe(250)
+        ->and($this->user->total_commission)->toBe(250)
+        ->and($this->user->balance)->toBe(50250);
+});
+
+test('training account task commission uses the membership level percentage', function () {
+    $this->membershipLevel->update(['percentage' => 2.5]);
+
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'is_training' => true,
+        'balance' => 0,
+        'training_balance' => 50000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertDispatched('open-task-modal')
+        ->assertSee('2.5%')
+        ->call('submitTask')
+        ->assertDispatched('task-completed');
+
+    $user->refresh();
+
+    expect($user->daily_commission)->toBe(250)
+        ->and($user->total_commission)->toBe(250)
+        ->and($user->training_balance)->toBe(50250)
+        ->and($user->balance)->toBe(0);
+});
+
+test('users cannot start tasks before the operating hours', function (string $time) {
+    Carbon::setTestNow(Carbon::parse('2026-03-10 '.$time, OperatingHours::TIMEZONE));
+
+    Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('open-task-modal')
+        ->assertDispatched('outside-operating-hours', message: OperatingHours::closedMessage());
+
+    expect(CompletedTask::where('user_id', $this->user->id)->exists())->toBeFalse();
+})->with(['08:00', '09:59']);
+
+test('users cannot start tasks after the operating hours', function (string $time) {
+    Carbon::setTestNow(Carbon::parse('2026-03-10 '.$time, OperatingHours::TIMEZONE));
+
+    Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('open-task-modal')
+        ->assertDispatched('outside-operating-hours', message: OperatingHours::closedMessage());
+
+    expect(CompletedTask::where('user_id', $this->user->id)->exists())->toBeFalse();
+})->with(['22:00', '23:30']);
+
+test('users can start tasks during the operating hours', function (string $time) {
+    Carbon::setTestNow(Carbon::parse('2026-03-10 '.$time, OperatingHours::TIMEZONE));
+
+    Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('outside-operating-hours')
+        ->assertDispatched('open-task-modal');
+})->with(['10:00', '15:30', '21:59']);
+
+test('users cannot submit a pending task outside the operating hours', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertDispatched('open-task-modal');
+
+    Carbon::setTestNow(Carbon::parse('2026-03-10 22:15:00', OperatingHours::TIMEZONE));
+
+    $component->call('submitTask')
+        ->assertNotDispatched('task-completed')
+        ->assertDispatched('outside-operating-hours', message: OperatingHours::closedMessage());
+
+    expect(CompletedTask::where('user_id', $this->user->id)->sole()->status)->toBe('pending');
+});
+
+test('users cannot submit a pending task from the optimize page outside the operating hours', function () {
+    $completedTask = CompletedTask::create([
+        'user_id' => $this->user->id,
+        'title' => 'Test Product',
+        'cost' => 100,
+        'task_image_path' => 'tasks/test.jpg',
+        'rating' => '',
+        'rating_id' => '',
+        'status' => 'pending',
+    ]);
+
+    session(['pending_task_id' => $completedTask->id]);
+
+    Carbon::setTestNow(Carbon::parse('2026-03-10 07:30:00', OperatingHours::TIMEZONE));
+
+    Livewire::actingAs($this->user)
+        ->test(Optimize::class)
+        ->call('submitTask')
+        ->assertNoRedirect()
+        ->assertDispatched('outside-operating-hours', message: OperatingHours::closedMessage());
+
+    expect($completedTask->fresh()->status)->toBe('pending')
+        ->and($this->user->fresh()->tasks_completed)->toBe(0);
 });

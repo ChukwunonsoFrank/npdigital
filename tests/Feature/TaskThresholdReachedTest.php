@@ -12,11 +12,15 @@ use Livewire\Livewire;
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
+    freezeTaskOperatingHours();
+
     MembershipLevel::create([
         'name' => 'Normal',
         'percentage' => 0.5,
     ]);
 });
+
+afterEach(fn () => unfreezeTaskOperatingHours());
 
 test('admin is notified when user completes their 10th task', function () {
     Notification::fake();

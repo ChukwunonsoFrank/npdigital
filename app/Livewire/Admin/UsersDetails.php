@@ -126,7 +126,7 @@ class UsersDetails extends Component
 
                 if (
                     ! $user->has_made_first_deposit
-                    && $startingBalance === 1000
+                    && $startingBalance === User::REGISTRATION_BONUS_IN_CENTS
                     && $bonusAmountInCents >= 10000
                 ) {
                     $user->has_made_first_deposit = true;

@@ -81,10 +81,10 @@ it('renders the redesigned start page content', function () {
         ->assertSee('On Hold')
         ->assertSee('Top Rated & Best Selling Products')
         ->assertSee('product-carousel-track')
-        ->assertSee('0/3 sets completed today')->assertSee('START TASK')
+        ->assertSee('0/3 sets completed today')->assertSee('GET PRODUCT')
         ->assertSee('Operating Hours')
         ->assertSee('Users may optimize the Product during the daily operation hours')
-        ->assertSee('from 10:00 to 22:59')
+        ->assertSee('from 10:00 AM to 10:00 PM EST')
         ->assertSee('For further explanation');
 });
 
@@ -366,7 +366,7 @@ it('renders the shared dashboard shell with the user navigation', function () {
         ->toContain('Lina')
         ->toContain('Diamond')
         ->toContain('Logout')
-        ->toContain('Start Tasks')
+        ->toContain('Work Center')
         ->toContain('page content')
         ->toContain('data-sidebar="mobile-nav"')
         // footer
@@ -424,7 +424,7 @@ it('renders the mobile bottom navigation with the primary user links', function 
         ->toContain('data-sidebar="mobile-nav"')
         ->toContain('md:hidden')
         ->toContain('Home')
-        ->toContain('Start Tasks')
+        ->toContain('Work Center')
         ->toContain('Records')
         ->toContain('Wallet')
         ->toContain('Profile')

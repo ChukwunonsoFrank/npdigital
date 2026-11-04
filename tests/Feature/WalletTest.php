@@ -35,6 +35,22 @@ it('renders the wallet page with balances and empty states', function () {
         ->assertSee('No transactions yet.');
 });
 
+it('shows the negative merge balance as available and holds the earned balance', function () {
+    $user = User::factory()->create([
+        'balance' => 104672,
+        'processing_amount' => 500,
+        'negative_balance' => 104500,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Wallet::class)
+        ->assertSuccessful()
+        ->assertSee('Available Balance')
+        ->assertSee('On Hold Balance')
+        ->assertSee('-$1,045.00')
+        ->assertSee('$1,046.72');
+});
+
 it('adds a saved wallet and redirects back to the wallet page', function () {
     $user = User::factory()->create();
 

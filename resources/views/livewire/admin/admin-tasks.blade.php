@@ -72,10 +72,11 @@
                                             </span>
                                             <span class="mt-0.5 flex items-center gap-1.5">
                                                 @if ($group !== null)
-                                                <span class="rounded-full bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">AUTO</span>
+                                                <span class="rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">MANUAL</span>
                                                 <span class="text-[11px] text-muted-foreground">Day {{ $group['day'] }} {{ strtoupper($group['group']) }}</span>
                                                 @else
-                                                <span class="text-[11px] text-muted-foreground">Not assigned</span>
+                                                <span class="rounded-full bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">AUTO</span>
+                                                <span class="text-[11px] text-muted-foreground">Day {{ $user->currentDay() }}</span>
                                                 @endif
                                             </span>
                                         </span>

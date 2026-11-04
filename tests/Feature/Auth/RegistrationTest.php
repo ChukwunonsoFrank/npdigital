@@ -47,7 +47,8 @@ test('new users can register', function () {
         ->is_training->toBeFalse()
         ->membership_level->toBe('Normal')
         ->name->toBe('Jane Smith')
-        ->mobile_number->toBe('+2341234567890');
+        ->mobile_number->toBe('+2341234567890')
+        ->balance->toBe(3000);
 
     Notification::assertSentOnDemand(
         UserRegistered::class,
@@ -123,7 +124,7 @@ test('platform settings block new and already open registration forms until reen
     $platformSettings->update(['maintenance_mode' => false, 'allow_registrations' => true]);
     $this->get('/register')->assertOk();
     $component->call('register')->assertRedirect('/dashboard');
-    expect(User::query()->where('username', 'waitinguser')->firstOrFail()->balance)->toBe(1000);
+    expect(User::query()->where('username', 'waitinguser')->firstOrFail()->balance)->toBe(3000);
 })->with([
     'registrations disabled' => [['allow_registrations' => false], 'New registrations are currently disabled.'],
     'maintenance enabled' => [['maintenance_mode' => true], 'The platform is temporarily unavailable for maintenance. Please try again later.'],

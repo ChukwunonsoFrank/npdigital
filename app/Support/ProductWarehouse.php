@@ -400,6 +400,17 @@ class ProductWarehouse
     }
 
     /**
+     * Determine whether a level has stored products ready to be delivered.
+     */
+    public static function hasStoredProducts(string $level): bool
+    {
+        return WarehouseProduct::query()
+            ->where('level', $level)
+            ->where('is_deleted', false)
+            ->exists();
+    }
+
+    /**
      * Catalog key used for generated product data. Levels without their own catalog use the diamond catalog.
      */
     private static function dataLevel(string $level): string

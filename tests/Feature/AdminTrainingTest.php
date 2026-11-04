@@ -21,9 +21,13 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    freezeTaskOperatingHours();
+
     MembershipLevel::create(['name' => 'Normal', 'percentage' => 1]);
     MembershipLevel::create(['name' => 'Diamond', 'percentage' => 1.5]);
 });
+
+afterEach(fn () => unfreezeTaskOperatingHours());
 
 it('lists only training users and links the training navigation', function () {
     $admin = User::factory()->create(['is_admin' => true]);
@@ -82,6 +86,18 @@ it('creates a training account that can log in and submit a normal task', functi
         ->and($user->fresh()->balance)->toBe(113457)
         ->and($referrer->fresh()->balance)->toBe(6)
         ->and($user->tasks()->sole()->status)->toBe('approved');
+});
+
+it('defaults a new training account balance to the thirty dollar registration bonus', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Volt::actingAs($admin)->test('admin.training')->call('createAccount')
+        ->assertSet('balance', '30.00')
+        ->set('name', 'Bonus Lina')->set('username', 'bonus_lina')->set('password', 'training-pass')
+        ->set('transactionPassword', '123456')->call('nextStep')
+        ->set('membershipLevel', 'Normal')->call('saveAccount')->assertHasNoErrors();
+
+    expect(User::query()->where('username', 'bonus_lina')->sole()->balance)->toBe(3000);
 });
 
 it('edits training details without changing blank passwords or the referral code', function () {

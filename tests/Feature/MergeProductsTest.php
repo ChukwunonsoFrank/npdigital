@@ -12,6 +12,10 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => freezeTaskOperatingHours());
+
+afterEach(fn () => unfreezeTaskOperatingHours());
+
 it('renders the assign orders page for admins only', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create(['is_admin' => false, 'name' => 'Task Member']);
@@ -28,7 +32,7 @@ it('renders the assign orders page for admins only', function () {
         ->assertForbidden();
 });
 
-it('auto assigns a full set of random products from the user level', function () {
+it('auto assigns a full set of products from the user level in warehouse order', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([
         'is_admin' => false, 'membership_level' => 'Normal', 'balance' => 100000,
@@ -48,6 +52,7 @@ it('auto assigns a full set of random products from the user level', function ()
     expect($tasks)->toHaveCount(30)
         ->and($tasks->every(fn (CompletedTask $task): bool => $task->status === 'queued' && ! $task->is_merge))->toBeTrue()
         ->and($tasks->pluck('warehouse_product_id')->unique())->toHaveCount(30)
+        ->and($tasks->pluck('warehouse_product_id')->all())->toBe($products->take(30)->pluck('product_id')->all())
         ->and($tasks->pluck('warehouse_product_id')->diff($products->pluck('product_id')))->toBeEmpty()
         ->and($tasks->pluck('available_after_tasks')->all())->toBe(range(0, 29))
         ->and($user->fresh()->productsPerSet())->toBe(30);
@@ -402,7 +407,7 @@ it('shows the merge shortfall as a bold negative and blocks submission until the
         ->assertSee('Submit product')
         ->assertSeeInOrder(['Merged order', 'Submit product'])
         ->assertDontSee('Top Up Wallet')
-        ->assertDontSee('Submit Task');
+        ->assertDontSee('Promote Product');
 
     expect($user->fresh()->negative_balance)->toBe(3000)
         ->and($merge->fresh()->status)->toBe('pending');
@@ -495,7 +500,7 @@ it('shows the merge shortfall when opening a pending merge from the records page
         ->assertSee('Submit product')
         ->assertSeeInOrder(['Merged order', 'Submit product'])
         ->assertDontSee('Top Up Wallet')
-        ->assertDontSee('Submit Task')
+        ->assertDontSee('Promote Product')
         ->call('submitTask', $merge->id)
         ->assertDispatched('insufficient-balance', message: 'Top up $30.00 to submit this merge product.');
 

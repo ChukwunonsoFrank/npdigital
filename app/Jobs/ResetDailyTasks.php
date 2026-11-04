@@ -50,12 +50,14 @@ class ResetDailyTasks
                             $previousValues = [
                                 'tasks_completed' => $user->tasks_completed,
                                 'task_batch' => $user->task_batch,
+                                'task_set_resets' => $user->task_set_resets,
                                 'daily_commission' => $user->daily_commission,
                             ];
 
                             $user->update([
                                 'tasks_completed' => 0,
                                 'task_batch' => 0,
+                                'task_set_resets' => 0,
                                 'daily_commission' => 0,
                                 'last_reset_at' => now(),
                             ]);

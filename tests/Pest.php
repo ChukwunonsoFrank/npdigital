@@ -45,3 +45,15 @@ function something()
 {
     // ..
 }
+
+function freezeTaskOperatingHours(): void
+{
+    \Illuminate\Support\Carbon::setTestNow(
+        \Illuminate\Support\Carbon::parse('2026-03-10 12:00:00', \App\Support\OperatingHours::TIMEZONE)
+    );
+}
+
+function unfreezeTaskOperatingHours(): void
+{
+    \Illuminate\Support\Carbon::setTestNow();
+}

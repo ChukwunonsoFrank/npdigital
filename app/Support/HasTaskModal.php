@@ -40,6 +40,10 @@ trait HasTaskModal
             return;
         }
 
+        if ($this->blockedOutsideOperatingHours()) {
+            return;
+        }
+
         if ($this->blockedByRequiredUpgrade(auth()->user())) {
             $this->dispatch('close-task-modal');
 

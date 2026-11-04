@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Support\CompletesTasks;
 use App\Support\HasTaskModal;
+use App\Support\ProductWarehouse;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -41,6 +42,10 @@ class Start extends Component
     {
         $user = auth()->user();
 
+        if ($this->blockedOutsideOperatingHours()) {
+            return;
+        }
+
         if ($this->blockedByRequiredUpgrade($user)) {
             return;
         }
@@ -57,8 +62,11 @@ class Start extends Component
         $activeTaskBalanceInCents = $this->availableTaskBalanceInCents($user);
         $productsPerSet = $user->productsPerSet();
 
-        if ($user->task_batch >= User::DAILY_TASK_SETS) {
-            $this->dispatch('task-limit-reached', message: 'Task limit reached. Come back tommorrow for more tasks.')->self();
+        if ($user->hasReachedTaskSetLimit()) {
+            $this->dispatch(
+                'task-limit-reached',
+                message: 'You have completed your free set for today. Contact customer support to reset your tasks and continue.',
+            )->self();
 
             return;
         }
@@ -120,9 +128,12 @@ class Start extends Component
             ->first();
 
         $group = $user->warehouseGroup();
+        $warehouseLevel = $group !== null || ProductWarehouse::hasStoredProducts(strtolower($user->membership_level));
         $warehouseProduct = null;
 
-        if (! $queuedTask && $group) {
+        if ($queuedTask) {
+            $task = $queuedTask;
+        } elseif ($group !== null) {
             $warehouseProduct = $user->remainingWarehouseProducts($group['day'], $group['group'])[0] ?? null;
             $task = $warehouseProduct ? new Task([
                 'title' => $warehouseProduct['name'],
@@ -130,17 +141,33 @@ class Start extends Component
                 'task_image_path' => $warehouseProduct['image'] ?? '',
                 'brand' => $warehouseProduct['brand'],
             ]) : null;
+        } elseif ($warehouseLevel) {
+            $warehouseProduct = $user->nextWarehouseProduct();
+            $task = $warehouseProduct ? new Task([
+                'title' => $warehouseProduct['name'],
+                'cost' => $warehouseProduct['price'],
+                'task_image_path' => $warehouseProduct['image'] ?? '',
+                'brand' => $warehouseProduct['brand'],
+            ]) : null;
         } else {
-            $task = $queuedTask ?? Task::query()
+            $completedTitles = CompletedTask::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'approved')
+                ->pluck('title');
+
+            $task = Task::query()
                 ->where('task_level', $user->membership_level)
-                ->inRandomOrder()
+                ->whereNotIn('title', $completedTitles)
+                ->orderBy('id')
                 ->first();
         }
 
         if (! $task) {
-            $this->dispatch('task-limit-reached', message: $group
-                ? 'No products remaining in your assigned warehouse group. Contact support for a new group.'
-                : 'No tasks available for your membership level at this time.')->self();
+            $this->dispatch('task-limit-reached', message: match (true) {
+                $group !== null => 'No products remaining in your assigned warehouse group. Contact support for a new group.',
+                $warehouseLevel => 'All warehouse products for your membership level have been completed. Contact support for more products.',
+                default => 'No tasks available for your membership level at this time.',
+            })->self();
 
             return;
         }

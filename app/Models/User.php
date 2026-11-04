@@ -17,9 +17,19 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * One-time welcome credit for newly registered accounts, in cents.
+     */
+    public const REGISTRATION_BONUS_IN_CENTS = 3000;
+
+    /**
      * Task sets a user completes in a full day of work.
      */
     public const DAILY_TASK_SETS = 3;
+
+    /**
+     * Task sets a user may complete in a day before an admin reset is required.
+     */
+    public const FREE_TASK_SETS = 1;
 
     /**
      * The attributes that are mass assignable.
@@ -40,6 +50,8 @@ class User extends Authenticatable
         'has_made_first_deposit',
         'tasks_completed',
         'task_batch',
+        'task_set_resets',
+        'current_day',
         'products_per_set',
         'daily_commission',
         'total_commission',
@@ -92,7 +104,10 @@ class User extends Authenticatable
             'warehouse_groups' => 'array',
             'submitted_warehouse_products' => 'array',
             'negative_balance' => 'integer',
+            'current_day' => 'integer',
             'products_per_set' => 'integer',
+            'task_batch' => 'integer',
+            'task_set_resets' => 'integer',
         ];
     }
 
@@ -110,6 +125,16 @@ class User extends Authenticatable
         return (int) ($this->products_per_set ?? ProductWarehouse::PRODUCTS_PER_SET);
     }
 
+    /**
+     * Determine whether the user has used every task set granted for today.
+     *
+     * Every user gets one free set a day. An admin reset grants one more set.
+     */
+    public function hasReachedTaskSetLimit(): bool
+    {
+        return (int) $this->task_batch >= self::FREE_TASK_SETS + (int) ($this->attributes['task_set_resets'] ?? 0);
+    }
+
     /** @return list<array<string, mixed>> */
     public function remainingWarehouseProducts(int $day, string $group): array
     {
@@ -117,6 +142,91 @@ class User extends Authenticatable
             ProductWarehouse::groupItems(strtolower($this->membership_level), $day, $group),
             fn (array $product): bool => ! in_array($product['id'], $this->submitted_warehouse_products ?? [], true),
         ));
+    }
+
+    /**
+     * The warehouse day the user is working through, clamped to the available days.
+     */
+    public function currentDay(): int
+    {
+        return max(1, min(ProductWarehouse::DAY_COUNT, (int) ($this->current_day ?? 1)));
+    }
+
+    /**
+     * The next product for the user, walking days and groups in order.
+     *
+     * Within a day the groups are consumed in sequence (A, B, C), and the
+     * current day advances once every group of the day is submitted. After the
+     * last day the cycle starts over with a fresh set of products.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function nextWarehouseProduct(): ?array
+    {
+        $product = $this->firstRemainingWarehouseProduct();
+
+        if ($product === null && $this->currentDay() >= ProductWarehouse::DAY_COUNT) {
+            $this->startWarehouseCycle();
+
+            return $this->firstRemainingWarehouseProduct();
+        }
+
+        return $product;
+    }
+
+    /**
+     * Move to the next day once every group of the current day is submitted.
+     */
+    public function advanceWarehouseDayIfComplete(): void
+    {
+        $day = $this->currentDay();
+
+        foreach (ProductWarehouse::GROUPS as $group) {
+            if ($this->remainingWarehouseProducts($day, $group) !== []) {
+                return;
+            }
+        }
+
+        if ($day < ProductWarehouse::DAY_COUNT) {
+            $this->update(['current_day' => $day + 1]);
+
+            return;
+        }
+
+        $this->startWarehouseCycle();
+    }
+
+    /**
+     * Start a fresh five-day cycle once the last day is complete.
+     */
+    private function startWarehouseCycle(): void
+    {
+        $this->update([
+            'current_day' => 1,
+            'submitted_warehouse_products' => [],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function firstRemainingWarehouseProduct(): ?array
+    {
+        for ($day = $this->currentDay(); $day <= ProductWarehouse::DAY_COUNT; $day++) {
+            foreach (ProductWarehouse::GROUPS as $group) {
+                $product = $this->remainingWarehouseProducts($day, $group)[0] ?? null;
+
+                if ($product !== null) {
+                    if ($day !== (int) $this->current_day) {
+                        $this->update(['current_day' => $day]);
+                    }
+
+                    return $product;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

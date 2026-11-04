@@ -15,6 +15,10 @@ class Optimize extends Component
 
     public function submitTask(int $rating = 0): void
     {
+        if ($this->blockedOutsideOperatingHours()) {
+            return;
+        }
+
         if ($this->blockedByRequiredUpgrade(auth()->user())) {
             return;
         }

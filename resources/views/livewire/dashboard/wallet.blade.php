@@ -36,7 +36,7 @@
                             class="mt-1 flex min-w-0 items-start font-display text-xl font-bold leading-none tracking-tight text-foreground sm:text-2xl">
                             <span class="mr-0.5 shrink-0 align-top text-xs text-muted-foreground sm:text-base">USD</span>
                             <span
-                                class="inline-block min-w-0 max-w-full flex-1 overflow-hidden whitespace-nowrap leading-none">${{ number_format($availableBalance, 2) }}</span>
+                                class="inline-block min-w-0 max-w-full flex-1 overflow-hidden whitespace-nowrap leading-none">{{ $availableBalance < 0 ? '-$'.number_format(abs($availableBalance), 2) : '$'.number_format($availableBalance, 2) }}</span>
                         </p>
                     </div>
                 </div>

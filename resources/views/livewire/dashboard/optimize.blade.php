@@ -70,6 +70,12 @@
 
 @script
     <script>
+        $wire.on('outside-operating-hours', (event) => {
+            if (window.showToast) {
+                window.showToast(event.message);
+            }
+        });
+
         $wire.on('upgrade-required', (event) => {
             if (window.showToast) {
                 window.showToast(event.message);

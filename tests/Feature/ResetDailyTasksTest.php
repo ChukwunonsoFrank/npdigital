@@ -18,6 +18,7 @@ test('it catches up a reset after the users local date has advanced', function (
     $user = User::factory()->create([
         'tasks_completed' => 5,
         'task_batch' => 2,
+        'task_set_resets' => 2,
         'daily_commission' => 250,
         'timezone' => 'Africa/Lagos',
         'last_reset_at' => '2026-01-01 00:05:00',
@@ -30,6 +31,7 @@ test('it catches up a reset after the users local date has advanced', function (
     expect($resetCount)->toBe(1)
         ->and($user->tasks_completed)->toBe(0)
         ->and($user->task_batch)->toBe(0)
+        ->and($user->task_set_resets)->toBe(0)
         ->and($user->daily_commission)->toBe(0)
         ->and($user->last_reset_at->toDateTimeString())->toBe('2026-01-02 15:45:00');
 });

@@ -2,6 +2,7 @@
 
 use App\Models\MembershipLevel;
 use App\Models\PlatformSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -260,7 +261,23 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
             'membershipChartRows.*.commission' => 'commission',
         ]);
 
-        PlatformSetting::query()->updateOrCreate(['id' => 1], ['membership_chart' => array_values($validated['membershipChartRows'])]);
+        DB::transaction(function () use ($validated): void {
+            PlatformSetting::query()->updateOrCreate(['id' => 1], ['membership_chart' => array_values($validated['membershipChartRows'])]);
+
+            $levels = MembershipLevel::query()->get()->keyBy(fn (MembershipLevel $level): string => strtolower($level->name));
+
+            foreach ($validated['membershipChartRows'] as $row) {
+                $level = $levels->get(strtolower(trim($row['name'])));
+                $percentage = preg_replace('/[^0-9.\-]/', '', (string) $row['commission']);
+
+                if ($level === null || $percentage === null || $percentage === '') {
+                    continue;
+                }
+
+                $level->update(['percentage' => number_format((float) $percentage, 2, '.', '')]);
+            }
+        });
+
         $this->editingMembershipChart = false;
         $this->dispatch('notify', message: 'Membership level chart saved.', type: 'success');
     }
@@ -595,8 +612,8 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
                             </div>
                         @elseif ($loop->index === 2)
                             <div class="space-y-2 rounded-lg border border-border p-3">
-                                <p class="text-sm font-medium">$10.00 registration bonus</p>
-                                <p class="text-xs text-muted-foreground">Every newly registered account receives a one-time $10.00 welcome bonus.</p>
+                                <p class="text-sm font-medium">$30.00 registration bonus</p>
+                                <p class="text-xs text-muted-foreground">Every newly registered account receives a one-time $30.00 welcome bonus.</p>
                             </div>
                         @elseif ($loop->index === 3)
                             <form wire:submit="saveWalletAddresses" class="space-y-4">

@@ -167,7 +167,7 @@
                     <button type="button" x-on:click="$wire.submitTask({{ $pendingTask->id }}, rating, review)"
                         wire:loading.attr="disabled" wire:target="submitTask"
                         class="mt-4 w-full rounded-xl bg-primary py-3 font-display text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60">
-                        <span wire:loading.remove wire:target="submitTask">Submit Task</span>
+                        <span wire:loading.remove wire:target="submitTask">Promote Product</span>
                         <span wire:loading wire:target="submitTask">Submitting...</span>
                     </button>
                 @endif

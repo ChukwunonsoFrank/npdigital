@@ -12,6 +12,23 @@ use Illuminate\Support\Facades\Notification;
 trait CompletesTasks
 {
     /**
+     * Dispatch the closed-hours notice and report whether task work is blocked.
+     */
+    protected function blockedOutsideOperatingHours(): bool
+    {
+        if (OperatingHours::isOpen()) {
+            return false;
+        }
+
+        $this->dispatch(
+            'outside-operating-hours',
+            message: OperatingHours::closedMessage(),
+        )->self();
+
+        return true;
+    }
+
+    /**
      * Dispatch the required-upgrade notice and report whether task submission is blocked.
      */
     protected function blockedByRequiredUpgrade(User $user): bool
@@ -63,6 +80,10 @@ trait CompletesTasks
                     $task->warehouse_product_id,
                 ])),
             ]);
+
+            if ($user->warehouseGroup() === null) {
+                $user->advanceWarehouseDayIfComplete();
+            }
         }
 
         if ($user->tasks_completed === 10) {

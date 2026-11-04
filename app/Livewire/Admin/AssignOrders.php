@@ -225,8 +225,6 @@ class AssignOrders extends Component
             ]);
         }
 
-        shuffle($pool);
-
         DB::transaction(function () use ($user, $pool): void {
             $lockedUser = User::query()->lockForUpdate()->find($user->id);
 

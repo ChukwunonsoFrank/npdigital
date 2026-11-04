@@ -122,7 +122,7 @@ class Register extends Component
                         'unhashed_password' => $validated['password'],
                         'mobile_number' => filled($validated['mobile_number']) ? $validated['country_code'].$validated['mobile_number'] : '',
                         'withdrawal_password' => Hash::make($validated['withdrawal_password']),
-                        'balance' => 1000,
+                        'balance' => User::REGISTRATION_BONUS_IN_CENTS,
                         'training_balance' => 0,
                         'has_made_first_deposit' => false,
                         'is_training' => false,
@@ -145,7 +145,7 @@ class Register extends Component
                 new UserRegistered($validated['username']),
             );
 
-            $user->notify(new RegisterBonusEarned($user->username, '10'));
+            $user->notify(new RegisterBonusEarned($user->username, number_format(User::REGISTRATION_BONUS_IN_CENTS / 100, 2)));
 
             if ($refCode) {
                 $referralCodeOwner = User::where('referral_code', $refCode)->first();

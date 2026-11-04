@@ -159,6 +159,10 @@
             toast(event.message)
         });
 
+        $wire.on('outside-operating-hours', (event) => {
+            toast(event.message)
+        });
+
         $wire.on('upgrade-required', (event) => {
             toast(event.message)
         });
