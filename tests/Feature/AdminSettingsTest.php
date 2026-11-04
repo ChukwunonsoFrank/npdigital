@@ -304,7 +304,9 @@ it('saves the membership chart and syncs commissions to the financial membership
     \Livewire\Livewire::actingAs($user)->test(\App\Livewire\Dashboard\Activities::class)
         ->assertSeeInOrder(['Silver', '$425.50', '30', '0.85%']);
     expect(\App\Models\MembershipLevel::query()->where('name', 'Silver')->value('percentage'))->toBe('0.85')
+        ->and(\App\Models\MembershipLevel::query()->where('name', 'Silver')->value('minimum_balance'))->toBe('425.50')
         ->and(\App\Models\MembershipLevel::query()->where('name', 'Gold')->value('percentage'))->toBe('1.00')
+        ->and(\App\Models\MembershipLevel::query()->where('name', 'Gold')->value('minimum_balance'))->toBe('999.00')
         ->and(PlatformSetting::current()->whatsapp_support_number)->toBe('+1234567890')
         ->and(PlatformSetting::current()->check_in_program)->toBeNull();
 });

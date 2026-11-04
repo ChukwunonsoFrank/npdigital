@@ -6,7 +6,7 @@
         </a>
         <div>
             <h1 class="font-display text-2xl font-bold">VIP Levels</h1>
-            <p class="text-sm text-muted-foreground">Every level gives you 3 sets of {{ $productsPerSet }} products a day. Higher levels earn more per product.</p>
+            <p class="text-sm text-muted-foreground">Every level gives you 3 sets a day. Higher levels earn more per product.</p>
         </div>
     </div>
 
@@ -74,7 +74,7 @@
                     </div>
                     <div class="rounded-lg bg-muted/40 p-2.5">
                         <p class="text-[10px] uppercase text-muted-foreground">Products per set</p>
-                        <p class="text-sm font-bold">{{ $productsPerSet }} products</p>
+                        <p class="text-sm font-bold">{{ $card['tasks'] }} products</p>
                     </div>
                 </div>
 
@@ -111,6 +111,6 @@
 
     <section class="rounded-2xl border border-border bg-card p-5">
         <h3 class="font-display text-sm font-bold">Fair sets at every level</h3>
-        <p class="mt-1 text-sm text-muted-foreground">All membership levels include 3 daily sets of {{ $productsPerSet }} products. Your level changes your commission rate and rewards, not the number of products you receive.</p>
+        <p class="mt-1 text-sm text-muted-foreground">All membership levels include 3 daily sets. Your level sets your commission rate, products per set and rewards.</p>
     </section>
 </div>

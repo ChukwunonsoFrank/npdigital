@@ -30,9 +30,33 @@ it('renders membership levels in detail with the current level highlighted', fun
         ->assertSee('Current');
 
     Livewire::actingAs($user)->test(VipLevels::class)
-        ->assertSee('3 daily sets of 30 products')
+        ->assertSee('3 sets a day')
         ->assertSee('$999')
         ->assertSee('Request upgrade');
+});
+
+it('reflects the admin membership chart deposit and tasks on each level card', function () {
+    MembershipLevel::create(['name' => 'Normal', 'percentage' => 0.5, 'minimum_balance' => '10']);
+    MembershipLevel::create(['name' => 'Silver', 'percentage' => 0.75, 'minimum_balance' => '20']);
+
+    \App\Models\PlatformSetting::query()->updateOrCreate(['id' => 1], [
+        'membership_chart' => [
+            ['name' => 'Normal', 'deposit' => '$123', 'tasks' => 12, 'commission' => '0.50%'],
+            ['name' => 'Silver', 'deposit' => '$456', 'tasks' => 24, 'commission' => '0.75%'],
+        ],
+    ]);
+
+    $user = User::factory()->create([
+        'is_admin' => false, 'is_banned' => false, 'membership_level' => 'Silver',
+        'balance' => 50000, 'products_per_set' => 8,
+    ]);
+
+    Livewire::actingAs($user)->test(VipLevels::class)
+        ->assertSee('$123')
+        ->assertSee('$456')
+        ->assertSee('12 products')
+        ->assertSee('24 products')
+        ->assertDontSee('8 products');
 });
 
 it('links the start page tiles to the bonus center and vip levels pages', function () {

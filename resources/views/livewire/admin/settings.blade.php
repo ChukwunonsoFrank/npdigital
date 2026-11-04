@@ -268,13 +268,26 @@ new #[Layout('components.layouts.dashboard')] #[Title('Platform Settings')] clas
 
             foreach ($validated['membershipChartRows'] as $row) {
                 $level = $levels->get(strtolower(trim($row['name'])));
-                $percentage = preg_replace('/[^0-9.\-]/', '', (string) $row['commission']);
 
-                if ($level === null || $percentage === null || $percentage === '') {
+                if ($level === null) {
                     continue;
                 }
 
-                $level->update(['percentage' => number_format((float) $percentage, 2, '.', '')]);
+                $updates = [];
+                $percentage = preg_replace('/[^0-9.\-]/', '', (string) $row['commission']);
+                $deposit = preg_replace('/[^0-9.]/', '', (string) $row['deposit']);
+
+                if ($percentage !== null && $percentage !== '') {
+                    $updates['percentage'] = number_format((float) $percentage, 2, '.', '');
+                }
+
+                if ($deposit !== null && $deposit !== '') {
+                    $updates['minimum_balance'] = number_format((float) $deposit, 2, '.', '');
+                }
+
+                if ($updates !== []) {
+                    $level->update($updates);
+                }
             }
         });
 
