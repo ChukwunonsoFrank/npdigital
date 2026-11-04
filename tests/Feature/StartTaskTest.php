@@ -6,6 +6,7 @@ use App\Models\CompletedTask;
 use App\Models\MembershipLevel;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\WarehouseProduct;
 use App\Support\OperatingHours;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -789,4 +790,29 @@ test('users cannot submit a pending task from the optimize page outside the oper
 
     expect($completedTask->fresh()->status)->toBe('pending')
         ->and($this->user->fresh()->tasks_completed)->toBe(0);
+});
+
+test('tasks keep warehouse image urls longer than 255 characters', function () {
+    $imageUrl = 'https://i5.walmartimages.com/seo/'.str_repeat('a', 220).'.jpeg?odnHeight=1500&odnWidth=1500&odnBg=FFFFFF';
+
+    expect(strlen($imageUrl))->toBeGreaterThan(255);
+
+    $product = WarehouseProduct::factory()->create([
+        'level' => 'normal',
+        'day' => 1,
+        'group_key' => 'a',
+        'name' => 'Long image product',
+        'image_url' => $imageUrl,
+        'price' => 45.00,
+    ]);
+
+    Livewire::actingAs($this->user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertDispatched('open-task-modal');
+
+    $pendingTask = $this->user->tasks()->where('status', 'pending')->sole();
+
+    expect($pendingTask->warehouse_product_id)->toBe($product->product_id)
+        ->and($pendingTask->task_image_path)->toBe($imageUrl);
 });
