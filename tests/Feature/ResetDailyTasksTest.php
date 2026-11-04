@@ -120,6 +120,22 @@ test('it does not run while another reset holds the execution lock', function ()
         ->and($user->fresh()->tasks_completed)->toBe(3);
 });
 
+test('the scheduled invocation is ignored now that resets are individual', function () {
+    Carbon::setTestNow('2026-01-02 12:00:00 UTC');
+
+    $user = User::factory()->create([
+        'tasks_completed' => 3,
+        'timezone' => 'UTC',
+        'last_reset_at' => '2026-01-01 00:00:00',
+    ]);
+
+    $this->artisan('app:reset-daily-tasks --scheduled')
+        ->expectsOutput('Scheduled daily task resets are disabled.')
+        ->assertSuccessful();
+
+    expect($user->fresh()->tasks_completed)->toBe(3);
+});
+
 test('the manual command only resets users whose local date has advanced', function () {
     Carbon::setTestNow('2026-01-02 12:00:00 UTC');
 
