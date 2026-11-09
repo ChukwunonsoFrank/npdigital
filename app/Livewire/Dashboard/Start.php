@@ -50,7 +50,13 @@ class Start extends Component
             return;
         }
 
-        if (! $user->is_training && ! $user->has_made_first_deposit) {
+        $activeTaskBalanceInCents = $this->availableTaskBalanceInCents($user);
+        $productsPerSet = $user->productsPerSet();
+        $isFirstTaskDay = ! $user->is_training && $user->isOnFirstTaskDay();
+        $currentSet = (int) $user->task_batch + 1;
+        $isFirstDaySet = $isFirstTaskDay && $currentSet <= User::DAILY_TASK_SETS;
+
+        if (! $user->is_training && ! $user->has_made_first_deposit && ! $isFirstDaySet) {
             $this->dispatch(
                 'deposit-required',
                 message: 'You need to make your first deposit of $100 before you can start tasks.',
@@ -58,9 +64,6 @@ class Start extends Component
 
             return;
         }
-
-        $activeTaskBalanceInCents = $this->availableTaskBalanceInCents($user);
-        $productsPerSet = $user->productsPerSet();
 
         if ($user->hasReachedTaskSetLimit()) {
             $this->dispatch(
@@ -76,7 +79,8 @@ class Start extends Component
             ->first();
 
         if (
-            $membershipLevel
+            ! $isFirstDaySet
+            && $membershipLevel
             && $membershipLevel->minimum_balance !== null
         ) {
             $minimumBalanceValue = str_replace(',', '', (string) $membershipLevel->minimum_balance);
@@ -92,6 +96,19 @@ class Start extends Component
 
                 return;
             }
+        }
+
+        if (
+            $isFirstDaySet
+            && $currentSet > 1
+            && $activeTaskBalanceInCents < User::FIRST_DAY_SET_BALANCE_IN_CENTS
+        ) {
+            $this->dispatch(
+                'minimum-balance-required',
+                message: 'You need at least $'.number_format(User::FIRST_DAY_SET_BALANCE_IN_CENTS / 100, 2).' available balance to complete Set '.$currentSet.'.',
+            )->self();
+
+            return;
         }
 
         if ($user->tasks_completed >= $productsPerSet && $user->lien_status === 'on_hold' && $user->lien_amount !== null) {

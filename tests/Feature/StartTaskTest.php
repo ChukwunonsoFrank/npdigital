@@ -327,6 +327,7 @@ test('user with balance below membership minimum balance gets toast', function (
         'balance' => 50000,
         'has_made_first_deposit' => true,
         'tasks_completed' => 0,
+        'current_day' => 2,
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
@@ -475,12 +476,13 @@ test('completing a full task set moves user to next task batch', function () {
         ->and($user->training_balance)->toBe(50050);
 });
 
-test('user without a first deposit cannot start tasks', function (int $taskBatch) {
+test('user past the first day without a first deposit cannot start tasks', function (int $taskBatch) {
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
         'tasks_completed' => 0,
         'task_batch' => $taskBatch,
+        'current_day' => 2,
         'has_made_first_deposit' => false,
         'daily_commission' => 0,
         'total_commission' => 0,
@@ -495,6 +497,75 @@ test('user without a first deposit cannot start tasks', function (int $taskBatch
 
     expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
 })->with([0, 1]);
+
+test('new real account can start set 1 with less than $100 before the first deposit', function () {
+    $this->task->update(['cost' => 20]);
+
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 5000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+        'current_day' => 1,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('deposit-required')
+        ->assertNotDispatched('minimum-balance-required')
+        ->assertNotDispatched('insufficient-balance')
+        ->assertDispatched('open-task-modal');
+});
+
+test('first day set 2 and set 3 require $100 of available balance', function (int $taskBatch) {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 5000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => $taskBatch,
+        'task_set_resets' => $taskBatch,
+        'current_day' => 1,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('open-task-modal')
+        ->assertDispatched('minimum-balance-required', message: 'You need at least $100.00 available balance to complete Set '.($taskBatch + 1).'.');
+
+    expect(CompletedTask::where('user_id', $user->id)->exists())->toBeFalse();
+})->with([1, 2]);
+
+test('first day set 2 and set 3 can start with $100 of available balance', function (int $taskBatch) {
+    $user = User::factory()->create([
+        'membership_level' => 'Normal',
+        'balance' => 10000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => $taskBatch,
+        'task_set_resets' => $taskBatch,
+        'current_day' => 1,
+        'daily_commission' => 0,
+        'total_commission' => 0,
+        'processing_amount' => 0,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('deposit-required')
+        ->assertNotDispatched('minimum-balance-required')
+        ->assertDispatched('open-task-modal');
+})->with([1, 2]);
 
 test('user who completed the free task set is blocked until support resets the tasks', function (int $taskBatch) {
     $user = User::factory()->create([

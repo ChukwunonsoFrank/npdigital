@@ -32,6 +32,12 @@ class User extends Authenticatable
     public const FREE_TASK_SETS = 1;
 
     /**
+     * Available balance a new real account needs for sets after the first one
+     * on their first day, in cents.
+     */
+    public const FIRST_DAY_SET_BALANCE_IN_CENTS = 10000;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -150,6 +156,14 @@ class User extends Authenticatable
     public function currentDay(): int
     {
         return max(1, min(ProductWarehouse::DAY_COUNT, (int) ($this->current_day ?? 1)));
+    }
+
+    /**
+     * Determine whether the user is on the first day of their product cycle.
+     */
+    public function isOnFirstTaskDay(): bool
+    {
+        return $this->currentDay() === 1;
     }
 
     /**
