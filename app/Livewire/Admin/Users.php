@@ -158,6 +158,19 @@ class Users extends Component
         $this->redirect(route('admin.dashboard.assign-orders', ['user' => $user->id]));
     }
 
+    public function openOngoingType2(): void
+    {
+        abort_unless(Auth::user()?->is_admin, 403);
+
+        $user = User::query()->where('is_admin', false)->find($this->selectedUserId);
+
+        if (! $user) {
+            return;
+        }
+
+        $this->redirect(route('admin.dashboard.users.ongoing-type-2', ['user' => $user->id]));
+    }
+
     public function resetTasks(): void
     {
         abort_unless(Auth::user()?->is_admin, 403);

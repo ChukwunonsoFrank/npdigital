@@ -21,6 +21,7 @@ use App\Livewire\Admin\AssignOrders;
 use App\Livewire\Admin\BonusCenter as AdminBonusCenter;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EmailBroadcast;
+use App\Livewire\Admin\OngoingType2;
 use App\Livewire\Admin\PaymentMethodDetails;
 use App\Livewire\Admin\PaymentMethods;
 use App\Livewire\Admin\Payments;
@@ -306,6 +307,9 @@ Route::middleware(['auth', 'admin'])
         Route::get('/users', Users::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.users');
+        Route::get('/users/ongoing-type-2', OngoingType2::class)
+            ->middleware(['auth', 'verified'])
+            ->name('dashboard.users.ongoing-type-2');
         Route::get('/dashboard/events', AdminEvents::class)
             ->middleware(['auth', 'verified'])
             ->name('dashboard.events');
