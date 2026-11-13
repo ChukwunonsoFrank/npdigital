@@ -61,14 +61,12 @@ it('creates a training account that can log in and submit a normal task', functi
         ->set('transactionPassword', '12345678')->call('nextStep')->assertHasNoErrors()
         ->assertSee('Step 2 of 2 — Set account details.')->set('balance', '1134.27')
         ->set('membershipLevel', 'Diamond')->set('referredBy', $referrer->referral_code)
-        ->set('referralCommissionEnabled', true)
         ->call('saveAccount')->assertHasNoErrors()->assertSet('showForm', false)->assertSee('$1134.27');
 
     $user = User::query()->where('username', 'Lina2025')->sole();
     expect($user->is_training)->toBeTrue()->and((bool) $user->is_admin)->toBeFalse()
         ->and($user->balance)->toBe(113427)->and($user->email)->toBe('lina2025@training.local')
         ->and($user->referred_by)->toBe($referrer->referral_code)
-        ->and($user->training_referral_commission_enabled)->toBeTrue()
         ->and($user->referral_code)->toMatch('/^SH[A-Z0-9]{6}$/')
         ->and(Hash::check('training-pass', $user->password))->toBeTrue()
         ->and(Hash::check('12345678', $user->withdrawal_password))->toBeTrue();
@@ -219,33 +217,33 @@ it('validates the credentials step and preserves both steps when going back', fu
     expect(User::query()->where('is_training', true)->exists())->toBeFalse();
     $component->call('saveAccount')->assertHasNoErrors();
     $user = User::query()->where('username', 'step_user')->sole();
-    expect($user->email)->toBe('step@example.com')->and($user->balance)->toBe(1423)
-        ->and($user->training_referral_commission_enabled)->toBeFalse();
+    expect($user->fresh()->email)->toBe('step@example.com')->and($user->fresh()->balance)->toBe(1423);
 });
 
-it('requires a valid referrer when commission is enabled and rejects duplicate optional emails', function () {
+it('validates an optional referrer code and rejects duplicate optional emails', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $referrer = User::factory()->create(['email' => 'taken@example.com']);
     $component = Volt::actingAs($admin)->test('admin.training')->call('createAccount')
         ->set('name', 'Lina')->set('username', 'Lina2025')->set('password', 'training-pass')
         ->set('transactionPassword', '123456')->call('nextStep')
-        ->set('referralCommissionEnabled', true)->call('saveAccount')->assertHasErrors(['referredBy' => 'required'])
+        ->set('referredBy', 'Unknown')->call('saveAccount')->assertHasErrors(['referredBy' => 'exists'])
         ->set('referredBy', $referrer->referral_code)->set('email', 'taken@example.com')
         ->call('saveAccount')->assertHasErrors(['email' => 'unique']);
     expect(User::query()->where('is_training', true)->exists())->toBeFalse();
     $component->set('email', 'new@example.com')->call('saveAccount')->assertHasNoErrors();
     $user = User::query()->where('username', 'Lina2025')->sole();
-    $component->call('editAccount', $user->id)->assertSet('referralCommissionEnabled', true)
-        ->assertSet('email', 'new@example.com')->set('referralCommissionEnabled', false)
-        ->call('saveAccount')->assertHasNoErrors();
-    expect($user->fresh()->training_referral_commission_enabled)->toBeFalse();
+    expect($user->referred_by)->toBe($referrer->referral_code);
+    $component->call('editAccount', $user->id)->assertSet('email', 'new@example.com')
+        ->set('referredBy', '')->call('saveAccount')->assertHasNoErrors();
+    expect($user->fresh()->referred_by)->toBeNull();
 });
 
-it('credits only opted-in training referrals from earned profit once', function (bool $isTraining, bool $enabled, string $cost, int $profit, int $referralProfit) {
+it('credits training referral commission from earned profit once', function (bool $isTraining, bool $hasReferrer, string $cost, int $profit, int $referralProfit) {
     $referrer = User::factory()->create(['balance' => 700, 'daily_commission' => 12, 'total_commission' => 24]);
     $user = User::factory()->create([
-        'is_training' => $isTraining, 'training_referral_commission_enabled' => $enabled,
-        'referred_by' => $referrer->referral_code, 'membership_level' => 'Diamond', 'balance' => 10000,
+        'is_training' => $isTraining,
+        'referred_by' => $hasReferrer ? $referrer->referral_code : null,
+        'membership_level' => 'Diamond', 'balance' => 10000,
     ]);
     $task = CompletedTask::create([
         'user_id' => $user->id, 'title' => 'Referral Product', 'cost' => $cost,
@@ -262,8 +260,8 @@ it('credits only opted-in training referrals from earned profit once', function 
         ->and(DB::table('referrals')->where('user_id', $referrer->id)->sum('amount'))->toBe($referralProfit)
         ->and(DB::table('referrals')->count())->toBe($referralProfit > 0 ? 1 : 0);
 })->with([
-    'enabled training' => [true, true, '19.87', 137, 27],
-    'disabled training' => [true, false, '19.87', 137, 0],
+    'training referral' => [true, true, '19.87', 137, 27],
+    'training without a referrer' => [true, false, '19.87', 137, 0],
     'normal user' => [false, true, '19.87', 137, 0],
     'rounds below one cent' => [true, true, '0.20', 1, 0],
 ]);

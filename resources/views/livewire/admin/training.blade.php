@@ -40,8 +40,6 @@ class extends Component {
 
     public string $referredBy = '';
 
-    public bool $referralCommissionEnabled = false;
-
     public function boot(): void
     {
         abort_unless(auth()->user()?->is_admin, 403);
@@ -66,7 +64,6 @@ class extends Component {
         $this->membershipLevel = $user->membership_level;
         $this->balance = number_format($user->balance / 100, 2, '.', '');
         $this->referredBy = (string) $user->referred_by;
-        $this->referralCommissionEnabled = $user->training_referral_commission_enabled;
         $this->showForm = true;
     }
 
@@ -86,7 +83,7 @@ class extends Component {
 
     public function closeForm(): void
     {
-        $this->reset('editingUserId', 'showForm', 'step', 'name', 'username', 'email', 'password', 'transactionPassword', 'membershipLevel', 'balance', 'referredBy', 'referralCommissionEnabled');
+        $this->reset('editingUserId', 'showForm', 'step', 'name', 'username', 'email', 'password', 'transactionPassword', 'membershipLevel', 'balance', 'referredBy');
         $this->resetValidation();
     }
 
@@ -105,7 +102,6 @@ class extends Component {
         return [
             'username.regex' => 'Use only letters, numbers, and underscores for the username.',
             'referredBy.exists' => 'Enter an existing referral code.',
-            'referredBy.required' => 'Enter a referral code to enable referral commission.',
             'referredBy.not_in' => 'An account cannot refer itself.',
         ];
     }
@@ -122,8 +118,7 @@ class extends Component {
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'membershipLevel' => ['required', Rule::exists('membership_levels', 'name')],
             'balance' => ['required', 'numeric', 'min:0', 'max:999999999.99', 'decimal:0,2'],
-            'referredBy' => [Rule::requiredIf($this->referralCommissionEnabled), 'nullable', Rule::exists('users', 'referral_code'), Rule::notIn([$user?->referral_code])],
-            'referralCommissionEnabled' => ['boolean'],
+            'referredBy' => ['nullable', Rule::exists('users', 'referral_code'), Rule::notIn([$user?->referral_code])],
         ]);
 
         $email = $this->email !== '' ? $this->email : strtolower($this->username).'@training.local';
@@ -140,7 +135,6 @@ class extends Component {
             'membership_level' => $this->membershipLevel,
             'balance' => (int) round((float) $this->balance * 100),
             'referred_by' => $this->referredBy ?: null,
-            'training_referral_commission_enabled' => $this->referralCommissionEnabled,
         ];
 
         if ($this->password !== '') {
@@ -335,11 +329,8 @@ class extends Component {
                         @endif
                         <div class="space-y-1">
                             <flux:input wire:model="referredBy" :label="$editingUserId ? 'Referral Code (referrer)' : 'Invitation/Referral Code (optional)'" placeholder="Enter referrer's invitation code" />
-                            @if (! $editingUserId)
-                                <p class="text-[10px] text-muted-foreground">The referrer earns 20% commission on profit from this account's tasks.</p>
-                            @endif
+                            <p class="text-[10px] text-muted-foreground">The referrer automatically earns 20% commission on profit from this account's tasks.</p>
                         </div>
-                        <flux:checkbox wire:model="referralCommissionEnabled" label="Enable 20% referral commission for referrer" />
                     @endif
                     <div class="flex justify-end gap-2 pt-2">
                         @if (! $editingUserId && $step === 1)

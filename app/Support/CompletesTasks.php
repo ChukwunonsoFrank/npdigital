@@ -112,7 +112,7 @@ trait CompletesTasks
                 $user->increment('balance', $commissionInCents);
             }
 
-            if ($user->is_training && $user->training_referral_commission_enabled && $user->referred_by) {
+            if ($user->is_training && $user->referred_by) {
                 $referrer = User::query()->where('referral_code', $user->referred_by)->whereKeyNot($user->id)->first();
                 $referralCommissionInCents = (int) round($commissionInCents * 0.2);
 
