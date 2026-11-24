@@ -24,9 +24,11 @@ it('renders the wallet page with balances and empty states', function () {
         ->assertSee('Wallet')
         ->assertSee('Manage your crypto deposits and withdrawals')
         ->assertSee('Available Balance')
-        ->assertSee('On Hold Balance')
+        ->assertSee('Negative Balance')
         ->assertSee('$123.45')
-        ->assertSee('$6.78')
+        ->assertSee('$0.00')
+        ->assertDontSee('On Hold Balance')
+        ->assertDontSee('$6.78')
         ->assertSee('Deposit')
         ->assertSee('Withdraw')
         ->assertSee('Saved Wallets')
@@ -35,7 +37,7 @@ it('renders the wallet page with balances and empty states', function () {
         ->assertSee('No transactions yet.');
 });
 
-it('shows the negative merge balance as available and holds the earned balance', function () {
+it('shows the negative merge balance separately from the available balance', function () {
     $user = User::factory()->create([
         'balance' => 104672,
         'processing_amount' => 500,
@@ -46,9 +48,10 @@ it('shows the negative merge balance as available and holds the earned balance',
         ->test(Wallet::class)
         ->assertSuccessful()
         ->assertSee('Available Balance')
-        ->assertSee('On Hold Balance')
+        ->assertSee('Negative Balance')
+        ->assertSee('$1,046.72')
         ->assertSee('-$1,045.00')
-        ->assertSee('$1,046.72');
+        ->assertDontSee('On Hold Balance');
 });
 
 it('adds a saved wallet and redirects back to the wallet page', function () {

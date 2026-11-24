@@ -47,7 +47,7 @@ test('start page displays user balance data', function () {
         ->test(Start::class)
         ->assertSee('Starting')
         ->assertSee('Balance')
-        ->assertSee('On Hold')
+        ->assertSee('Negative Balance')
         ->assertSee('500.00')
         ->assertSee('0.00')
         ->assertSee('0/3 sets completed today')
@@ -282,7 +282,7 @@ test('on hold user at task limit gets extra deposit message', function () {
         ->assertDispatched('task-limit-reached', message: 'You need to make an extra deposit to proceed with completion of tasks.');
 });
 
-test('start page shows the on hold amount when the account is on hold', function () {
+test('start page shows the negative balance instead of the on hold amount', function () {
     $user = User::factory()->create([
         'membership_level' => 'Normal',
         'balance' => 50000,
@@ -290,13 +290,17 @@ test('start page shows the on hold amount when the account is on hold', function
         'daily_commission' => 0,
         'total_commission' => 0,
         'processing_amount' => 0,
+        'negative_balance' => 2550,
         'lien_status' => 'on_hold',
         'lien_amount' => '750000',
     ]);
 
     Livewire::actingAs($user)
         ->test(Start::class)
-        ->assertSee('7,500.00');
+        ->assertSee('Negative Balance')
+        ->assertSee('-$25.50')
+        ->assertDontSee('On Hold')
+        ->assertDontSee('7,500.00');
 });
 
 test('starting a new task with a pending task redirects to the records page', function () {

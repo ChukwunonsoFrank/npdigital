@@ -53,20 +53,20 @@
                 <div class="relative flex min-w-0 items-start gap-2 sm:gap-3">
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12"
                         style="background: linear-gradient(135deg, hsl(var(--membership-gold)), hsl(var(--membership-gold) / 0.7)); box-shadow: 0 6px 16px -4px hsl(var(--membership-gold) / 0.5);">
-                        <x-dashboard.icon name="clock" class="h-6 w-6 text-white" />
+                        <x-dashboard.icon name="triangle-alert" class="h-6 w-6 text-white" />
                     </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
                             <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
                                 style="background-color: hsl(var(--membership-gold));"></span>
                             <p class="text-[10px] font-bold uppercase tracking-[0.12em]"
-                                style="color: hsl(var(--membership-gold));">On Hold Balance</p>
+                                style="color: hsl(var(--membership-gold));">Negative Balance</p>
                         </div>
                         <p class="mt-1 flex min-w-0 items-start font-display text-xl font-bold leading-none tracking-tight sm:text-2xl"
                             style="color: hsl(var(--membership-gold));">
                             <span class="mr-0.5 shrink-0 align-top text-xs opacity-70 sm:text-base">USD</span>
                             <span
-                                class="inline-block min-w-0 max-w-full flex-1 overflow-hidden whitespace-nowrap leading-none">${{ number_format($onHoldBalance, 2) }}</span>
+                                class="inline-block min-w-0 max-w-full flex-1 overflow-hidden whitespace-nowrap leading-none">{{ $negativeBalance > 0 ? '-$'.number_format($negativeBalance, 2) : '$0.00' }}</span>
                         </p>
                     </div>
                 </div>

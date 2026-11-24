@@ -78,7 +78,7 @@ it('renders the redesigned start page content', function () {
         ->assertSee('Starting')
         ->assertSee('VIP')
         ->assertSee('Balance')
-        ->assertSee('On Hold')
+        ->assertSee('Negative Balance')
         ->assertSee('Top Rated & Best Selling Products')
         ->assertSee('product-carousel-track')
         ->assertSee('0/3 sets completed today')->assertSee('GET PRODUCT')

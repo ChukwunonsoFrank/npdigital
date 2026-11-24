@@ -57,14 +57,14 @@
                 <div class="relative flex items-start gap-2.5">
                     <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
                         style="background: linear-gradient(135deg, hsl(var(--membership-gold)), hsl(var(--membership-gold) / 0.7)); box-shadow: 0 6px 16px -4px hsl(var(--membership-gold) / 0.5);">
-                        <x-dashboard.icon name="clock" class="h-5 w-5 text-white" />
+                        <x-dashboard.icon name="triangle-alert" class="h-5 w-5 text-white" />
                     </div>
                     <div class="min-w-0 flex-1 text-left">
                         <div class="flex items-center gap-1.5">
                             <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
                                 style="background-color: hsl(var(--membership-gold));"></span>
                             <p class="text-[9px] font-bold uppercase tracking-[0.12em]"
-                                style="color: hsl(var(--membership-gold));">On Hold</p>
+                                style="color: hsl(var(--membership-gold));">Negative Balance</p>
                         </div>
                     </div>
                 </div>
@@ -73,7 +73,7 @@
                     style="color: hsl(var(--membership-gold));">
                     <span class="mr-0.5 align-top text-[10px] opacity-70">USD</span>
                     <span
-                        class="inline-block whitespace-nowrap leading-none">${{ number_format((($user->lien_status ?? 'off_hold') === 'on_hold' ? (int) $user->lien_amount : 0) / 100, 2) }}</span>
+                        class="inline-block whitespace-nowrap leading-none">{{ $user->negative_balance > 0 ? '-$'.number_format($user->negative_balance / 100, 2) : '$0.00' }}</span>
                 </p>
             </div>
         </div>
