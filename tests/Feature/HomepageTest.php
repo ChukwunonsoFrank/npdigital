@@ -18,6 +18,18 @@ it('shows the public marketing homepage with working account entry points', func
         ->assertSee('Customer Support');
 });
 
+it('does not load the tawk.to live chat widget on the landing page layout', function () {
+    \Illuminate\Support\Facades\URL::resolveMissingNamedRoutesUsing(fn (string $name): string => '/'.$name);
+
+    $html = view('components.layouts.landing-page', [
+        'slot' => new \Illuminate\Support\HtmlString('page content'),
+    ])->render();
+
+    expect($html)
+        ->not->toContain('tawk.to')
+        ->not->toContain('Tawk_API');
+});
+
 it('keeps the dashboard behind authentication', function () {
     $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
