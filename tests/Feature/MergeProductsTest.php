@@ -32,6 +32,53 @@ it('renders the assign orders page for admins only', function () {
         ->assertForbidden();
 });
 
+it('lets admins assign a first-day set to a real account without a first deposit', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'membership_level' => 'Normal',
+        'balance' => 3000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => 0,
+        'current_day' => 1,
+    ]);
+
+    WarehouseProduct::factory()->count(30)->create([
+        'level' => 'normal', 'day' => 1, 'group_key' => 'a', 'price' => 20,
+    ]);
+
+    Livewire::actingAs($admin)->test(AssignOrders::class)
+        ->call('selectUser', $user->id)
+        ->assertDontSee('This user has not made their first deposit')
+        ->call('autoAssign')
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($user->fresh())->test(Start::class)
+        ->call('startTask')
+        ->assertNotDispatched('deposit-required')
+        ->assertDispatched('open-task-modal');
+});
+
+it('tells admins when a first-day set needs the $100 balance instead of a deposit', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $user = User::factory()->create([
+        'is_admin' => false,
+        'membership_level' => 'Normal',
+        'balance' => 5000,
+        'has_made_first_deposit' => false,
+        'tasks_completed' => 0,
+        'task_batch' => 1,
+        'task_set_resets' => 1,
+        'current_day' => 1,
+    ]);
+
+    Livewire::actingAs($admin)->test(AssignOrders::class)
+        ->call('selectUser', $user->id)
+        ->assertSee('This user needs at least $100.00 available balance to start Set 2.')
+        ->assertDontSee('This user has not made their first deposit');
+});
+
 it('auto assigns a full set of products from the user level in warehouse order', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $user = User::factory()->create([

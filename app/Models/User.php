@@ -165,6 +165,45 @@ class User extends Authenticatable
     }
 
     /**
+     * Determine whether the user may work through the first three sets of their first day.
+     *
+     * New real accounts start these sets before making a first deposit. Set 1
+     * only needs enough balance for its products; sets 2 and 3 also require the
+     * first-day balance minimum.
+     */
+    public function canUseFirstDaySets(): bool
+    {
+        return ! $this->is_training
+            && $this->isOnFirstTaskDay()
+            && (int) $this->task_batch < self::DAILY_TASK_SETS;
+    }
+
+    /**
+     * Determine whether a first deposit is required before the user can start tasks.
+     */
+    public function requiresFirstDepositForTasks(): bool
+    {
+        return ! $this->is_training
+            && ! $this->has_made_first_deposit
+            && ! $this->canUseFirstDaySets();
+    }
+
+    /**
+     * Balance that funds the user's tasks.
+     *
+     * Training accounts spend their loaded training balance; everyone else
+     * spends the balance shown on the dashboard.
+     */
+    public function availableTaskBalanceInCents(): int
+    {
+        if ($this->is_training && (int) $this->training_balance > 0) {
+            return (int) $this->training_balance;
+        }
+
+        return (int) $this->balance;
+    }
+
+    /**
      * The next product for the user, walking days and groups in order.
      *
      * Within a day the groups are consumed in sequence (A, B, C), and the

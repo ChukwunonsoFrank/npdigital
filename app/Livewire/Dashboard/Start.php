@@ -18,19 +18,6 @@ class Start extends Component
     use CompletesTasks;
     use HasTaskModal;
 
-    /**
-     * The wallet that funds tasks: training accounts spend their loaded training
-     * balance, everyone else spends the balance shown on the dashboard.
-     */
-    private function availableTaskBalanceInCents(User $user): int
-    {
-        if ($user->is_training && (int) $user->training_balance > 0) {
-            return (int) $user->training_balance;
-        }
-
-        return (int) $user->balance;
-    }
-
     public function mount(): void
     {
         if (session('task_completed')) {
@@ -50,13 +37,12 @@ class Start extends Component
             return;
         }
 
-        $activeTaskBalanceInCents = $this->availableTaskBalanceInCents($user);
+        $activeTaskBalanceInCents = $user->availableTaskBalanceInCents();
         $productsPerSet = $user->productsPerSet();
-        $isFirstTaskDay = ! $user->is_training && $user->isOnFirstTaskDay();
+        $isFirstDaySet = $user->canUseFirstDaySets();
         $currentSet = (int) $user->task_batch + 1;
-        $isFirstDaySet = $isFirstTaskDay && $currentSet <= User::DAILY_TASK_SETS;
 
-        if (! $user->is_training && ! $user->has_made_first_deposit && ! $isFirstDaySet) {
+        if ($user->requiresFirstDepositForTasks()) {
             $this->dispatch(
                 'deposit-required',
                 message: 'You need to make your first deposit of $100 before you can start tasks.',

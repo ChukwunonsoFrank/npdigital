@@ -134,10 +134,19 @@
                 </div>
             </div>
 
-            @if (! $selectedUser->is_training && ! $selectedUser->has_made_first_deposit)
+            @if ($selectedUser->requiresFirstDepositForTasks())
                 <div class="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-500/5 p-3 text-sm text-muted-foreground">
                     <x-dashboard.icon name="triangle-alert" class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                     <p>This user has not made their first deposit, so they cannot start these orders until they top up.</p>
+                </div>
+            @elseif (
+                $selectedUser->canUseFirstDaySets()
+                && (int) $selectedUser->task_batch > 0
+                && $selectedUser->availableTaskBalanceInCents() < \App\Models\User::FIRST_DAY_SET_BALANCE_IN_CENTS
+            )
+                <div class="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-500/5 p-3 text-sm text-muted-foreground">
+                    <x-dashboard.icon name="triangle-alert" class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <p>This user needs at least ${{ number_format(\App\Models\User::FIRST_DAY_SET_BALANCE_IN_CENTS / 100, 2) }} available balance to start Set {{ (int) $selectedUser->task_batch + 1 }}.</p>
                 </div>
             @else
                 <div class="mt-4 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
