@@ -37,7 +37,6 @@ class Navigation
             ['label' => 'Upgrades', 'route' => 'admin.upgrades', 'icon' => 'circle-arrow-up', 'active' => 'admin.upgrades'],
             ['label' => 'Manage Admins', 'route' => 'admin.admins', 'icon' => 'shield-check', 'active' => 'admin.admins'],
             ['label' => 'Platform Settings', 'route' => 'admin.settings', 'icon' => 'settings', 'active' => 'admin.settings*'],
-            // ['label' => 'Live Chat', 'route' => null, 'icon' => 'message-circle', 'active' => 'admin.dashboard.chat*'],
             ['label' => 'Announcements', 'route' => 'admin.announcements', 'icon' => 'megaphone', 'active' => 'admin.announcements'],
         ];
     }

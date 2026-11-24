@@ -4,10 +4,6 @@
         <x-dashboard.stat-card label="Total Products" :value="$totalProducts" icon="package" />
     </div>
 
-    <x-dashboard.panel title="Incoming Messages" icon="message-circle" action="View All Chats">
-        <x-dashboard.empty-state message="No new messages" />
-    </x-dashboard.panel>
-
     <x-dashboard.panel title="Upgrade Requests" icon="circle-arrow-up" icon-class="text-purple-500" action="View All" :action-url="route('admin.upgrades')">
         <div class="divide-y divide-border">
             @forelse ($upgradeRequests as $request)

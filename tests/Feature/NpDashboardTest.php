@@ -38,9 +38,8 @@ it('renders the user home page content', function () {
         ->assertSee('Extended Team')
         ->assertSee('Find Us')
         ->assertSee('Support Services')
-        ->assertSee('Live Chat')
-        ->assertSee('Chat with our support team')
-        ->assertSee('https://code.jivosite.com/chatpage/itW0erCyp0')
+        ->assertDontSee('Live Chat')
+        ->assertDontSee('https://code.jivosite.com/chatpage/itW0erCyp0')
         ->assertSee(route('dashboard.activities'));
 });
 
@@ -261,9 +260,8 @@ it('renders the about page content', function () {
         ->assertSee('Talk To Our Team')
         ->assertSee('Ready to get started?')
         ->assertSee('Support Services')
-        ->assertSee('Live Chat')
-        ->assertSee('Chat with our support team')
-        ->assertSee('https://code.jivosite.com/chatpage/itW0erCyp0');
+        ->assertDontSee('Live Chat')
+        ->assertDontSee('https://code.jivosite.com/chatpage/itW0erCyp0');
 });
 
 it('authenticated users can view the about page', function () {
@@ -349,7 +347,8 @@ it('renders the admin overview page content', function () {
         ->assertSuccessful()
         ->assertSee('Total Users')
         ->assertSee('Total Products')
-        ->assertSee('No new messages')
+        ->assertDontSee('Incoming Messages')
+        ->assertDontSee('View All Chats')
         ->assertSee('No upgrade requests yet')
         ->assertSee('No transactions yet');
 });
@@ -446,8 +445,9 @@ it('renders the floating support bubble on the user dashboard shell', function (
         ->toContain('bottom-[calc(68px+env(safe-area-inset-bottom)+1rem)]')
         ->toContain('md:bottom-6 md:right-6')
         ->toContain('Support Services')
-        ->toContain('Chat with our support team')
-        ->toContain('https://code.jivosite.com/chatpage/itW0erCyp0');
+        ->not->toContain('Live Chat')
+        ->not->toContain('https://code.jivosite.com/chatpage/itW0erCyp0')
+        ->not->toContain('tawk.to');
 });
 
 it('shows the WhatsApp and Telegram support links configured in platform settings', function () {

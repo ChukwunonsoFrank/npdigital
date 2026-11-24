@@ -1,5 +1,5 @@
-<div x-data="{ supportModalOpen: false, chatOpen: false }"
-    @keydown.escape.window="supportModalOpen = false; chatOpen = false">
+<div x-data="{ supportModalOpen: false }"
+    @keydown.escape.window="supportModalOpen = false">
     <div class="space-y-6 animate-fade-in">
         <div>
             <h1 class="font-display text-2xl font-bold text-foreground sm:text-3xl">Welcome back, {{ auth()->user()->username }}!</h1>

@@ -1,5 +1,5 @@
-<div x-data="{ supportModalOpen: false, chatOpen: false }"
-    @keydown.escape.window="supportModalOpen = false; chatOpen = false">
+<div x-data="{ supportModalOpen: false }"
+    @keydown.escape.window="supportModalOpen = false">
     <div class="fixed bottom-[calc(68px+env(safe-area-inset-bottom)+1rem)] right-4 z-40 md:bottom-6 md:right-6">
         <button type="button" @click="supportModalOpen = true" aria-label="Customer Support"
             class="relative inline-flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">

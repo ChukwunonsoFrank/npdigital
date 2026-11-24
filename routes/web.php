@@ -64,7 +64,6 @@ use App\Livewire\Dashboard\Record;
 // use App\Livewire\Dashboard\Security\VerifyChangePasswordTwofa;
 // use App\Livewire\Dashboard\ShowReferrals;
 use App\Livewire\Dashboard\Start;
-// use App\Livewire\Dashboard\Support;
 use App\Livewire\Dashboard\TermsAndConditions;
 use App\Livewire\Dashboard\VipLevels;
 // use App\Livewire\Dashboard\Traderoom;
@@ -192,9 +191,6 @@ Route::middleware(['auth', 'user', 'banned'])->group(function () {
     // Route::get('/dashboard/robot/lockout', Lockout::class)
     //     ->middleware(['auth', 'verified'])
     //     ->name('dashboard.robot.lockout');
-    // Route::get('/dashboard/support', Support::class)
-    //     ->middleware(['auth', 'verified'])
-    //     ->name('dashboard.support');
     // Route::get('/dashboard/deposit/confirm', ConfirmDeposit::class)
     //     ->middleware(['auth', 'verified'])
     //     ->name('dashboard.deposit.confirm');

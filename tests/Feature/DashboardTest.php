@@ -66,7 +66,8 @@ test('admin overview shows the five newest upgrades and combined transactions wi
         ->assertSee('Deposit #')
         ->assertSee('Withdrawal #')
         ->assertSee('$123.45')
-        ->assertSee('No new messages')
+        ->assertDontSee('Incoming Messages')
+        ->assertDontSee('View All Chats')
         ->assertDontSee('Overview Customer 5')
         ->assertDontSee('Overview Customer 6')
         ->assertDontSee('Overview Customer 7')
@@ -86,7 +87,7 @@ test('admin overview retains empty states and view all links without any request
         ->assertOk()
         ->assertSee('No upgrade requests yet')
         ->assertSee('No transactions yet')
-        ->assertSee('No new messages')
+        ->assertDontSee('Incoming Messages')
         ->assertSee(route('admin.upgrades'))
         ->assertSee(route('admin.payments'));
 });

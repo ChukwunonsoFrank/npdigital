@@ -130,6 +130,20 @@ class PlatformSetting extends Model
         ];
     }
 
+    public function whatsappSupportUrl(): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $this->whatsapp_support_number);
+
+        return $digits !== '' ? 'https://wa.me/'.$digits : null;
+    }
+
+    public function telegramSupportUrl(): ?string
+    {
+        $username = ltrim((string) $this->telegram_support_username, '@');
+
+        return $username !== '' ? 'https://t.me/'.$username : null;
+    }
+
     public static function current(): self
     {
         return self::query()->find(1) ?? new self;

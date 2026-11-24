@@ -81,8 +81,8 @@
     ];
 @endphp
 
-<div x-data="{ tab: 'about', supportModalOpen: false, chatOpen: false }"
-    @keydown.escape.window="supportModalOpen = false; chatOpen = false">
+<div x-data="{ tab: 'about', supportModalOpen: false }"
+    @keydown.escape.window="supportModalOpen = false">
     <div class="animate-fade-in">
         {{-- Tabs span the full width; content below stays inset --}}
         <div class="-mx-3 border-b border-border sm:-mx-4 lg:-mx-6">

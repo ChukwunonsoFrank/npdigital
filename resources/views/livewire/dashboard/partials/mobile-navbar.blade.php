@@ -1,4 +1,9 @@
 <nav x-data id="mobile__navbar" class="flex-none lg:hidden px-4 w-full py-3 border-t border-[#26252a]">
+    @php
+        $supportSettings = \App\Models\PlatformSetting::current();
+        $whatsappUrl = $supportSettings->whatsappSupportUrl();
+        $telegramUrl = $supportSettings->telegramSupportUrl();
+    @endphp
     <div class="flex justify-between items-center md:justify-around">
         <a class="block" href="{{ route('dashboard') }}">
             <div>
@@ -127,9 +132,34 @@
                 </svg>
             </div>
         </div>
-        <div class="grow">
-            <iframe frameborder="0" width="100%" height="100%"
-                src="https://tawk.to/chat/693d5de40981ca197f7a915d/1jcbrdhu4"></iframe>
+        <div class="grow space-y-2 p-4">
+            @if ($whatsappUrl)
+                <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer"
+                    class="flex items-center gap-3 rounded-xl border border-[#26252a] bg-white/5 p-3 text-left transition-colors hover:border-[#3a3a40]">
+                    <img src="{{ asset('assets/img/whatsapp.png') }}" alt="" width="44" height="44"
+                        class="h-11 w-11 shrink-0 rounded-lg">
+                    <span class="min-w-0">
+                        <span class="block text-sm font-bold text-white">WhatsApp</span>
+                        <span class="block text-xs text-[#a4a4a4]">Chat with us on WhatsApp</span>
+                    </span>
+                </a>
+            @endif
+
+            @if ($telegramUrl)
+                <a href="{{ $telegramUrl }}" target="_blank" rel="noopener noreferrer"
+                    class="flex items-center gap-3 rounded-xl border border-[#26252a] bg-white/5 p-3 text-left transition-colors hover:border-[#3a3a40]">
+                    <img src="{{ asset('assets/img/telegram.png') }}" alt="" width="44" height="44"
+                        class="h-11 w-11 shrink-0 rounded-lg">
+                    <span class="min-w-0">
+                        <span class="block text-sm font-bold text-white">Telegram</span>
+                        <span class="block text-xs text-[#a4a4a4]">Message us on Telegram</span>
+                    </span>
+                </a>
+            @endif
+
+            @unless ($whatsappUrl || $telegramUrl)
+                <p class="px-2 py-4 text-center text-sm text-[#a4a4a4]">Support contacts are not available right now.</p>
+            @endunless
         </div>
     </div>
 </nav>
